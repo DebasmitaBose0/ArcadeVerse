@@ -22,6 +22,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <!-- Ambient background lighting -->
   <div class="cyber-grid"></div>
   <div class="glow-orb orb-1"></div>
@@ -36,8 +37,8 @@
         <span class="nsoc-tag">NSOC '26</span>
       </a>
 
-      <nav class="nav-links">
-        <a href="index.html" class="nav-item active"><i data-lucide="gamepad-2"></i> Explore Games</a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html" class="nav-item active" aria-current="page"><i data-lucide="gamepad-2"></i> Explore Games</a>
         <a href="leaderboard.html" class="nav-item"><i data-lucide="trophy"></i> Hall of Fame</a>
         <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" class="nav-item badge-link"><i data-lucide="book-open"></i> Contributor Guide</a>
       </nav>
@@ -57,7 +58,7 @@
     <!-- Mobile Navigation Drawer / Dropdown -->
     <div class="mobile-nav-drawer" id="mobile-nav-drawer" aria-hidden="true">
       <div class="mobile-nav-content">
-        <a href="index.html" class="mobile-nav-item active">
+        <a href="index.html" class="mobile-nav-item active" aria-current="page">
           <span class="mobile-nav-icon"><i data-lucide="gamepad-2"></i></span>
           <span>Explore Games</span>
         </a>
@@ -78,7 +79,7 @@
   </header>
 
   <!-- Hero Section -->
-  <main>
+  <main id="main-content" tabindex="-1">
     <section class="hero-section">
       <div class="hero-content">
         <div class="hero-badge">
@@ -152,7 +153,7 @@
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="game-search-input" placeholder="Search game or contributor...">
+            <input type="text" id="game-search-input" placeholder="Search game or contributor..." aria-label="Search games or contributors">
           </div>
 
           <div class="sort-box">

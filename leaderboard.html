@@ -21,6 +21,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="cyber-grid"></div>
   <div class="glow-orb orb-1"></div>
   <div class="glow-orb orb-2"></div>
@@ -34,7 +35,7 @@
         <span class="nsoc-tag">NSOC '26</span>
       </a>
 
-      <nav class="nav-links">
+      <nav class="nav-links" aria-label="Main navigation">
         <a href="index.html" class="nav-item"><i data-lucide="gamepad-2"></i> Explore Games</a>
         <a href="leaderboard.html" class="nav-item active"><i data-lucide="trophy"></i> Hall of Fame</a>
         <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" class="nav-item badge-link"><i data-lucide="book-open"></i> Contributor Guide</a>
@@ -44,11 +45,37 @@
         <a href="https://github.com/DebasmitaBose0/ArcadeVerse" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" title="View repository on GitHub">
           <span><i data-lucide="star"></i> GitHub</span>
         </a>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="mobile-nav-drawer">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
       </div>
+    </div>
+
+    <div class="mobile-nav-drawer" id="mobile-nav-drawer" aria-hidden="true">
+      <nav class="mobile-nav-content" aria-label="Mobile navigation">
+        <a href="index.html" class="mobile-nav-item">
+          <span class="mobile-nav-icon"><i data-lucide="gamepad-2"></i></span>
+          <span>Explore Games</span>
+        </a>
+        <a href="leaderboard.html" class="mobile-nav-item active" aria-current="page">
+          <span class="mobile-nav-icon"><i data-lucide="trophy"></i></span>
+          <span>Hall of Fame</span>
+        </a>
+        <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="mobile-nav-item mobile-badge-link">
+          <span class="mobile-nav-icon"><i data-lucide="book-open"></i></span>
+          <span>Contributor Guide</span>
+        </a>
+        <div class="mobile-nav-divider"></div>
+        <a href="https://github.com/DebasmitaBose0/ArcadeVerse" target="_blank" rel="noopener noreferrer" class="mobile-github-btn">
+          <span><i data-lucide="star"></i> Star on GitHub</span>
+        </a>
+      </nav>
     </div>
   </header>
 
-  <main class="page-container">
+  <main class="page-container" id="main-content" tabindex="-1">
     <div class="section-header center">
       <span class="section-tag">LIVE GITHUB RANKINGS</span>
       <h1 class="section-title">Hall of Fame & Leaderboard</h1>
@@ -74,7 +101,7 @@
         <span id="sync-status-text">GitHub Live Contributions Synced</span>
       </div>
       <div class="repo-meta-box">
-        <input type="text" id="repo-input" placeholder="owner/repo (e.g. DebasmitaBose0/ArcadeVerse)" value="DebasmitaBose0/ArcadeVerse">
+        <input type="text" id="repo-input" aria-label="GitHub repository to load leaderboard stats from" placeholder="owner/repo (e.g. DebasmitaBose0/ArcadeVerse)" value="DebasmitaBose0/ArcadeVerse">
         <button class="btn btn-secondary btn-sm" id="fetch-github-btn"><i data-lucide="refresh-cw"></i> Refresh Stats</button>
       </div>
     </div>
@@ -380,11 +407,6 @@
   <script src="others/accessibility-engine-babin/a11y-engine.js"></script>
   <script src="others/pwa-engine-babin/pwa-client.js"></script>
   <script>
-    const navbar = document.getElementById("navbar");
-    window.addEventListener("scroll", () => {
-      if (window.scrollY > 40) navbar.classList.add("scrolled");
-      else navbar.classList.remove("scrolled");
-    }, { passive: true });
     if (window.lucide) {
       lucide.createIcons();
     }
