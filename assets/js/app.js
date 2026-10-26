@@ -8,7 +8,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const totalGamesCount = document.getElementById("total-games-count");
   const totalContributorsCount = document.getElementById("total-contributors-count");
   const searchInput = document.getElementById("game-search-input");
+  const searchClearBtn = document.getElementById("search-clear-btn");
+  const tagSelect = document.getElementById("catalog-tag-select");
+  const clearAllBtn = document.getElementById("clear-all-filters-btn");
   const categoryPills = document.querySelectorAll(".category-pills .pill");
+  const catalogCountNum = document.getElementById("catalog-count-num");
+  const catalogLiveCount = document.getElementById("catalog-live-count");
 
   // Modal elements
   const gameModal = document.getElementById("game-modal");
@@ -27,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalFavBtn = document.getElementById("modal-fav-btn");
 
   let currentCategory = "all";
+  let currentTag = "all";
   let searchQuery = "";
   let currentSort = "featured";
   let lastFocusedElement = null;
@@ -97,6 +103,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Populate dynamic Tag filter from existing game metadata
+  function populateTagSelect() {
+    if (!tagSelect) return;
+    const tagCounts = new Map();
+    GAMES_REGISTRY.forEach((game) => {
+      if (Array.isArray(game.tags)) {
+        game.tags.forEach((t) => {
+          const clean = t.trim();
+          if (clean && clean.toUpperCase() !== "NSOC26") {
+            tagCounts.set(clean, (tagCounts.get(clean) || 0) + 1);
+          }
+        });
+      }
+    });
+
+    const sortedTags = Array.from(tagCounts.keys()).sort((a, b) => a.localeCompare(b));
+    tagSelect.innerHTML = '<option value="all">All Tags</option>';
+    sortedTags.forEach((tag) => {
+      const opt = document.createElement("option");
+      opt.value = tag;
+      opt.textContent = `#${tag} (${tagCounts.get(tag)})`;
+      tagSelect.appendChild(opt);
+    });
+  }
+  populateTagSelect();
+
   // Dynamic Background Plugin Loader for features in others/
   function initBackgroundPlugins() {
     if (typeof FEATURES_REGISTRY === "undefined" || !Array.isArray(FEATURES_REGISTRY)) return;
@@ -127,15 +159,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const toolsPill = document.createElement("button");
     toolsPill.className = "pill pill-tools";
     toolsPill.setAttribute("data-category", "tools");
+    toolsPill.setAttribute("role", "tab");
+    toolsPill.setAttribute("aria-selected", "false");
     toolsPill.innerHTML = `<span><i data-lucide="wrench" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i>Arcade Tools</span> <span class="favorites-count-badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">${standaloneTools.length}</span>`;
     categoryPillsContainer.appendChild(toolsPill);
     if (window.lucide) {
       lucide.createIcons();
     }
     toolsPill.addEventListener("click", () => {
-      document.querySelectorAll(".category-pills .pill").forEach((p) => p.classList.remove("active"));
+      document.querySelectorAll(".category-pills .pill").forEach((p) => {
+        p.classList.remove("active");
+        p.setAttribute("aria-selected", "false");
+      });
       toolsPill.classList.add("active");
+      toolsPill.setAttribute("aria-selected", "true");
       currentCategory = "tools";
+      updateFilterControlsState();
       renderGames();
     });
   }
@@ -144,6 +183,41 @@ document.addEventListener("DOMContentLoaded", () => {
   if (totalGamesCount) totalGamesCount.textContent = GAMES_REGISTRY.length;
   if (totalContributorsCount) totalContributorsCount.textContent = CONTRIBUTORS_REGISTRY.length;
   updateFavoritesBadge();
+
+  // Synchronize Filter UI States
+  function updateFilterControlsState() {
+    const hasSearch = searchQuery.length > 0;
+    const hasActiveFilter = hasSearch || currentCategory !== "all" || currentTag !== "all";
+
+    if (searchClearBtn) {
+      searchClearBtn.style.display = hasSearch ? "inline-flex" : "none";
+    }
+    if (clearAllBtn) {
+      clearAllBtn.style.display = hasActiveFilter ? "inline-flex" : "none";
+    }
+    if (tagSelect && tagSelect.value !== currentTag) {
+      tagSelect.value = currentTag;
+    }
+  }
+
+  function resetAllFilters() {
+    searchQuery = "";
+    currentCategory = "all";
+    currentTag = "all";
+    if (searchInput) searchInput.value = "";
+    if (tagSelect) tagSelect.value = "all";
+
+    const allPills = document.querySelectorAll(".category-pills .pill");
+    allPills.forEach((p) => {
+      const isAll = p.getAttribute("data-category") === "all";
+      p.classList.toggle("active", isAll);
+      p.setAttribute("aria-selected", isAll ? "true" : "false");
+    });
+
+    updateFilterControlsState();
+    renderGames();
+    if (searchInput) searchInput.focus();
+  }
 
   // Render Games
   function renderGames() {
@@ -163,17 +237,41 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (currentCategory === "tools") {
         matchesCategory = true;
       } else {
-        matchesCategory = item.category.toLowerCase() === currentCategory.toLowerCase();
+        matchesCategory = Boolean(item.category && item.category.toLowerCase() === currentCategory.toLowerCase());
       }
 
-      const matchesSearch = 
-        item.title.toLowerCase().includes(searchQuery) ||
-        item.description.toLowerCase().includes(searchQuery) ||
-        item.author.toLowerCase().includes(searchQuery) ||
-        (item.tags && item.tags.some(t => t.toLowerCase().includes(searchQuery)));
+      let matchesTag = false;
+      if (currentTag === "all") {
+        matchesTag = true;
+      } else {
+        matchesTag = Array.isArray(item.tags) && item.tags.some((t) => t.toLowerCase() === currentTag.toLowerCase());
+      }
 
-      return matchesCategory && matchesSearch;
+      let matchesSearch = true;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = Boolean(item.title && item.title.toLowerCase().includes(q));
+        const descMatch = Boolean(item.description && item.description.toLowerCase().includes(q));
+        const authorMatch = Boolean(item.author && item.author.toLowerCase().includes(q));
+        const catMatch = Boolean(item.category && item.category.toLowerCase().includes(q));
+        const tagMatch = Array.isArray(item.tags) && item.tags.some((t) => t.toLowerCase().includes(q));
+        matchesSearch = titleMatch || descMatch || authorMatch || catMatch || tagMatch;
+      }
+
+      return matchesCategory && matchesTag && matchesSearch;
     });
+
+    // Update Live Count
+    if (catalogCountNum) {
+      catalogCountNum.textContent = filtered.length;
+    }
+    if (catalogLiveCount) {
+      if (filtered.length === currentDataSet.length) {
+        catalogLiveCount.innerHTML = `Showing all <strong>${filtered.length}</strong> games`;
+      } else {
+        catalogLiveCount.innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${currentDataSet.length}</strong> games`;
+      }
+    }
 
     // Apply Sorting
     filtered.sort((a, b) => {
@@ -207,39 +305,47 @@ document.addEventListener("DOMContentLoaded", () => {
             </button>
           </div>
         `;
-      } else {
+      } else if (searchQuery) {
         emptyCard.innerHTML = `
-          <div class="empty-state-icon"><i data-lucide="gamepad-2"></i></div>
+          <div class="empty-state-icon" style="color: #60a5fa;"><i data-lucide="search-x"></i></div>
           <h3 class="empty-state-title"></h3>
           <p class="empty-state-desc">
-            Be the pioneer contributor! Build the first game for this category under <code>games/&lt;game-name&gt;_&lt;your-name&gt;/</code> and claim your spot on the leaderboard.
+            No games match your search query. Try checking for typos, using broader terms, or clearing active filters.
           </p>
           <div class="empty-state-actions">
-            <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
-              <span><i data-lucide="rocket"></i> Build a Game for This Category</span>
-            </a>
-            <button class="btn btn-secondary btn-sm" id="reset-filter-btn">
-              <span><i data-lucide="rotate-ccw"></i> Clear Filters</span>
+            <button class="btn btn-primary btn-sm" id="reset-filter-btn">
+              <span><i data-lucide="rotate-ccw"></i> Clear Search & Filters</span>
             </button>
+            <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+              <span><i data-lucide="rocket"></i> Contribute a Game</span>
+            </a>
           </div>
         `;
+        const titleEl = emptyCard.querySelector(".empty-state-title");
+        titleEl.textContent = `No games found matching "${searchQuery}"${currentCategory !== "all" ? ` in ${currentCategory}` : ""}${currentTag !== "all" ? ` (#${currentTag})` : ""}`;
+      } else {
+        emptyCard.innerHTML = `
+          <div class="empty-state-icon"><i data-lucide="filter-x"></i></div>
+          <h3 class="empty-state-title"></h3>
+          <p class="empty-state-desc">
+            No games currently found for this category or tag filter. Be the pioneer contributor! Build the first game under <code>games/&lt;game-name&gt;_&lt;your-name&gt;/</code> and claim your spot on the leaderboard.
+          </p>
+          <div class="empty-state-actions">
+            <button class="btn btn-primary btn-sm" id="reset-filter-btn">
+              <span><i data-lucide="rotate-ccw"></i> Clear Filters</span>
+            </button>
+            <a href="https://github.com/DebasmitaBose0/ArcadeVerse/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+              <span><i data-lucide="rocket"></i> Build a Game for This Category</span>
+            </a>
+          </div>
+        `;
+        const titleEl = emptyCard.querySelector(".empty-state-title");
+        titleEl.textContent = currentTag !== "all" 
+          ? `No games found with tag #${currentTag}`
+          : `No games found in "${currentCategory}"`;
       }
 
-      // Category and search text come from the user, so set them as text, not markup.
-      const emptyTitle = emptyCard.querySelector(".empty-state-title");
-      if (currentCategory !== "favorites") {
-        emptyTitle.textContent = `No games found in "${currentCategory !== "all" ? currentCategory : searchQuery}"`;
-      }
-
-      emptyCard.querySelector("#reset-filter-btn").addEventListener("click", () => {
-        searchQuery = "";
-        currentCategory = "all";
-        if (searchInput) searchInput.value = "";
-        categoryPills.forEach((p) => p.classList.remove("active"));
-        const allPill = document.querySelector('.category-pills .pill[data-category="all"]');
-        if (allPill) allPill.classList.add("active");
-        renderGames();
-      });
+      emptyCard.querySelector("#reset-filter-btn").addEventListener("click", resetAllFilters);
 
       gamesGrid.appendChild(emptyCard);
       if (window.lucide) lucide.createIcons();
@@ -256,6 +362,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const favorited = favs.has(game.id);
       const actionText = isTool ? 'Launch Tool <i data-lucide="external-link" style="width: 13px; height: 13px; vertical-align: middle; margin-left: 2px;"></i>' : 'Play Now <i data-lucide="play" style="width: 13px; height: 13px; vertical-align: middle; margin-left: 2px;"></i>';
 
+      const tagsHtml = Array.isArray(game.tags)
+        ? `<div class="game-tags-list">
+             ${game.tags.filter((t) => t.toUpperCase() !== "NSOC26").slice(0, 3).map((t) => `<button type="button" class="game-tag-chip" data-tag="${t}" title="Filter by #${t}">#${t}</button>`).join("")}
+           </div>`
+        : "";
+
       card.innerHTML = `
         <div class="game-card-preview">
           <span class="game-category-tag ${isTool ? 'tool-tag' : ''}">${game.category}</span>
@@ -269,6 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="game-card-body">
           <h3 class="game-card-title">${game.title}</h3>
           <p class="game-card-desc">${game.description}</p>
+          ${tagsHtml}
           <div class="game-card-footer">
             <div class="contributor-meta">
               <div class="contributor-avatar">${game.author.charAt(0).toUpperCase()}</div>
@@ -280,6 +393,19 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         </div>
       `;
+
+      card.querySelectorAll(".game-tag-chip").forEach((chip) => {
+        chip.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const tag = chip.getAttribute("data-tag");
+          if (tag) {
+            currentTag = tag;
+            if (tagSelect) tagSelect.value = tag;
+            updateFilterControlsState();
+            renderGames();
+          }
+        });
+      });
 
       const favBtn = card.querySelector(".btn-card-favorite");
       favBtn.addEventListener("click", (e) => {
@@ -411,21 +537,69 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Filter Search
-  searchInput.addEventListener("input", (e) => {
-    searchQuery = e.target.value.toLowerCase().trim();
-    renderGames();
-  });
+  // Tag Selector Change
+  if (tagSelect) {
+    tagSelect.addEventListener("change", (e) => {
+      currentTag = e.target.value;
+      updateFilterControlsState();
+      renderGames();
+    });
+  }
 
+  // Filter Search
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      updateFilterControlsState();
+      renderGames();
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (searchQuery) {
+          searchQuery = "";
+          searchInput.value = "";
+          updateFilterControlsState();
+          renderGames();
+        }
+      }
+    });
+  }
+
+  // Search Clear Button
+  if (searchClearBtn) {
+    searchClearBtn.addEventListener("click", () => {
+      searchQuery = "";
+      if (searchInput) {
+        searchInput.value = "";
+        searchInput.focus();
+      }
+      updateFilterControlsState();
+      renderGames();
+    });
+  }
+
+  // Clear All Filters Button
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener("click", resetAllFilters);
+  }
+
+  // Category Pills
   categoryPills.forEach((pill) => {
     pill.addEventListener("click", () => {
-      categoryPills.forEach((p) => p.classList.remove("active"));
+      document.querySelectorAll(".category-pills .pill").forEach((p) => {
+        p.classList.remove("active");
+        p.setAttribute("aria-selected", "false");
+      });
       pill.classList.add("active");
+      pill.setAttribute("aria-selected", "true");
       currentCategory = pill.getAttribute("data-category");
+      updateFilterControlsState();
       renderGames();
     });
   });
 
   // Initial render
+  updateFilterControlsState();
   renderGames();
 });
