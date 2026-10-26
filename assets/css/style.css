@@ -316,6 +316,22 @@
   color: var(--text-muted);
 }
 
+:root[data-theme-mode="light"] .btn-card-favorite.favorited,
+:root[data-theme="light"] .btn-card-favorite.favorited,
+:root.light-theme .btn-card-favorite.favorited {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.45);
+  color: #e11d48;
+}
+
+:root[data-theme-mode="light"] #modal-fav-btn.favorited,
+:root[data-theme="light"] #modal-fav-btn.favorited,
+:root.light-theme #modal-fav-btn.favorited {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.45);
+  color: #e11d48;
+}
+
 :root[data-theme-mode="light"] .game-card-title,
 :root[data-theme="light"] .game-card-title,
 :root.light-theme .game-card-title {
@@ -1656,6 +1672,11 @@ textarea:focus-visible,
   transform: scale(1.12);
 }
 
+.btn-card-favorite:focus-visible {
+  outline: 2px solid #f43f5e;
+  outline-offset: 2px;
+}
+
 .game-card-body {
   padding: 1.5rem;
   display: flex;
@@ -2314,6 +2335,11 @@ textarea:focus-visible,
 #modal-fav-btn.favorited .modal-fav-icon {
   fill: #f43f5e;
   stroke: #f43f5e;
+}
+
+#modal-fav-btn:focus-visible {
+  outline: 2px solid #f43f5e;
+  outline-offset: 2px;
 }
 
 .modal-controls .btn-close {

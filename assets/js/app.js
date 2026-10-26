@@ -65,8 +65,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateFavoritesBadge() {
+    const count = getFavorites().size;
     if (favoritesCountBadge) {
-      favoritesCountBadge.textContent = getFavorites().size;
+      favoritesCountBadge.textContent = count;
+    }
+    const mobileFavCount = document.getElementById("mobile-fav-count");
+    if (mobileFavCount) {
+      mobileFavCount.textContent = count;
     }
   }
 
@@ -74,7 +79,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!modalFavBtn) return;
     modalFavBtn.classList.toggle("favorited", fav);
     modalFavBtn.setAttribute("aria-pressed", fav ? "true" : "false");
-    modalFavBtn.title = fav ? "Remove from Favorites" : "Save to Favorites";
+    const label = fav ? "Remove from Favorites" : "Save to Favorites";
+    modalFavBtn.title = label;
+    modalFavBtn.setAttribute("aria-label", label);
   }
 
   function toggleFavorite(gameId) {
@@ -94,14 +101,44 @@ document.addEventListener("DOMContentLoaded", () => {
       if (cardBtn) {
         cardBtn.classList.toggle("favorited", willBeFav);
         cardBtn.setAttribute("aria-pressed", willBeFav ? "true" : "false");
-        cardBtn.title = willBeFav ? "Remove from Favorites" : "Save to Favorites";
+        const label = willBeFav ? "Remove from Favorites" : "Save to Favorites";
+        cardBtn.title = label;
+        cardBtn.setAttribute("aria-label", label);
       }
     }
 
     if (activeGame && activeGame.id === gameId) {
       updateModalFavoriteButton(willBeFav);
     }
+
+    window.dispatchEvent(new CustomEvent("arcadeverse:favorites-updated", {
+      detail: { gameId, isFavorite: willBeFav, totalCount: favs.size }
+    }));
   }
+
+  // Cross-tab real-time favorites synchronization
+  window.addEventListener("storage", (e) => {
+    if (e.key === FAVORITES_STORAGE_KEY) {
+      updateFavoritesBadge();
+      if (currentCategory === "favorites") {
+        renderGames();
+      } else {
+        const favs = getFavorites();
+        document.querySelectorAll(".btn-card-favorite").forEach((btn) => {
+          const id = btn.getAttribute("data-id");
+          const isFav = favs.has(id);
+          btn.classList.toggle("favorited", isFav);
+          btn.setAttribute("aria-pressed", isFav ? "true" : "false");
+          const label = isFav ? "Remove from Favorites" : "Save to Favorites";
+          btn.title = label;
+          btn.setAttribute("aria-label", label);
+        });
+      }
+      if (activeGame) {
+        updateModalFavoriteButton(isFavorite(activeGame.id));
+      }
+    }
+  });
 
   // Populate dynamic Tag filter from existing game metadata
   function populateTagSelect() {
@@ -292,7 +329,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const emptyCard = document.createElement("div");
       emptyCard.className = "catalog-empty-state";
 
-      if (currentCategory === "favorites") {
+      if (currentCategory === "favorites" && favs.size === 0) {
         emptyCard.innerHTML = `
           <div class="empty-state-icon" style="color: #f43f5e;"><i data-lucide="heart-crack"></i></div>
           <h3 class="empty-state-title">No Favorite Games Saved Yet</h3>
@@ -598,6 +635,35 @@ document.addEventListener("DOMContentLoaded", () => {
       renderGames();
     });
   });
+
+  // Mobile Favorites Link Shortcut
+  const mobileFavLink = document.getElementById("mobile-favorites-link");
+  if (mobileFavLink) {
+    mobileFavLink.addEventListener("click", () => {
+      const mobileDrawer = document.getElementById("mobile-nav-drawer");
+      const menuBtn = document.getElementById("mobile-menu-btn");
+      if (mobileDrawer) {
+        mobileDrawer.classList.remove("open");
+        mobileDrawer.setAttribute("aria-hidden", "true");
+      }
+      if (menuBtn) {
+        menuBtn.setAttribute("aria-expanded", "false");
+      }
+
+      document.querySelectorAll(".category-pills .pill").forEach((p) => {
+        p.classList.remove("active");
+        p.setAttribute("aria-selected", "false");
+      });
+      const favPill = document.querySelector('.category-pills .pill[data-category="favorites"]');
+      if (favPill) {
+        favPill.classList.add("active");
+        favPill.setAttribute("aria-selected", "true");
+      }
+      currentCategory = "favorites";
+      updateFilterControlsState();
+      renderGames();
+    });
+  }
 
   // Initial render
   updateFilterControlsState();
