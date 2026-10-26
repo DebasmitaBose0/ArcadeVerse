@@ -133,10 +133,25 @@
     constructor() {
       this.ctx = null;
       this.enabled = this.loadPreference();
+      window.addEventListener("message", (e) => {
+        if (e.data && typeof e.data.enabled === "boolean") {
+          this.enabled = e.data.enabled;
+          const onIcon = document.getElementById("ngd-icon-sound-on");
+          const offIcon = document.getElementById("ngd-icon-sound-off");
+          if (onIcon && offIcon) {
+            onIcon.classList.toggle("ngd-hidden", !this.enabled);
+            offIcon.classList.toggle("ngd-hidden", this.enabled);
+          }
+        }
+      });
     }
 
     loadPreference() {
       try {
+        const globalVal = localStorage.getItem("arcadeverse_sound_enabled");
+        if (globalVal !== null) {
+          return globalVal === "true";
+        }
         const val = localStorage.getItem(CONFIG.STORAGE_KEYS.SOUND_ENABLED);
         return val === null ? true : val === "true";
       } catch (e) {
@@ -162,6 +177,16 @@
       }
     }
 
+    isMasterMuted() {
+      if (!this.enabled) return true;
+      try {
+        if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+          return !window.parent.ArcadeSoundEngine.isEnabled();
+        }
+      } catch (e) {}
+      return false;
+    }
+
     toggle() {
       this.enabled = !this.enabled;
       this.savePreference();
@@ -170,7 +195,7 @@
     }
 
     playShootPulse() {
-      if (!this.enabled || !this.ctx) return;
+      if (this.isMasterMuted() || !this.ctx) return;
       try {
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();

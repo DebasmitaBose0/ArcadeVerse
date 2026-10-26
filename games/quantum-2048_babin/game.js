@@ -11,10 +11,23 @@ class Quantum2048 {
     this.score = 0;
     this.bestScore = parseInt(localStorage.getItem("arcadeverse_q2048_best") || "0", 10);
     this.previousState = null;
-    this.soundEnabled = true;
+    const globalSound = localStorage.getItem("arcadeverse_sound_enabled");
+    this.soundEnabled = globalSound !== null ? globalSound === "true" : true;
     this.won = false;
     this.keepPlaying = false;
     this.over = false;
+
+    window.addEventListener("message", (e) => {
+      if (e.data && typeof e.data.enabled === "boolean") {
+        this.soundEnabled = e.data.enabled;
+        if (this.soundIcon) {
+          this.soundIcon.innerHTML = this.soundEnabled 
+            ? '<i data-lucide="volume-2"></i> Sound ON' 
+            : '<i data-lucide="volume-x"></i> Sound OFF';
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    });
 
     // DOM Elements
     this.tileContainer = document.getElementById("tile-container");
@@ -341,6 +354,11 @@ class Quantum2048 {
   // Web Audio API Synthesis
   playSound(type) {
     if (!this.soundEnabled) return;
+    try {
+      if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+        if (!window.parent.ArcadeSoundEngine.isEnabled()) return;
+      }
+    } catch (e) {}
 
     try {
       if (!this.audioCtx) {

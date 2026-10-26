@@ -68,12 +68,28 @@
   class SoundEngine {
     constructor() {
       this.ctx = null;
-      this.muted = false;
+      const globalVal = localStorage.getItem("arcadeverse_sound_enabled");
+      this.muted = globalVal !== null ? globalVal === "false" : false;
       this.initialized = false;
+      window.addEventListener("message", (e) => {
+        if (e.data && typeof e.data.enabled === "boolean") {
+          this.muted = !e.data.enabled;
+        }
+      });
+    }
+
+    isMasterMuted() {
+      if (this.muted) return true;
+      try {
+        if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+          return !window.parent.ArcadeSoundEngine.isEnabled();
+        }
+      } catch (e) {}
+      return false;
     }
 
     init() {
-      if (this.initialized) return;
+      if (this.initialized || this.isMasterMuted()) return;
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
@@ -86,6 +102,7 @@
     }
 
     resume() {
+      if (this.isMasterMuted()) return;
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {});
       }

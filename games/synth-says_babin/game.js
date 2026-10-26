@@ -28,10 +28,32 @@
 
   // Web Audio Synthesizer Engine
   let audioCtx = null;
+  let soundEnabled = (() => {
+    const val = localStorage.getItem("arcadeverse_sound_enabled");
+    return val !== null ? val === "true" : true;
+  })();
+
+  window.addEventListener("message", (e) => {
+    if (e.data && typeof e.data.enabled === "boolean") {
+      soundEnabled = e.data.enabled;
+    }
+  });
+
+  function isSoundActive() {
+    if (!soundEnabled) return false;
+    try {
+      if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+        return window.parent.ArcadeSoundEngine.isEnabled();
+      }
+    } catch (e) {}
+    return true;
+  }
+
   const PAD_FREQUENCIES = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5 harmonic triad
   const FAIL_FREQUENCY = 110.00; // Low buzz on desync
 
   function playTone(freq, duration = 0.3, type = "sine") {
+    if (!isSoundActive()) return;
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended") audioCtx.resume();

@@ -312,6 +312,17 @@ document.addEventListener("DOMContentLoaded", () => {
     gameIframe.src = game.path;
     newTabBtn.href = game.path;
 
+    gameIframe.onload = () => {
+      const isSoundEnabled = window.ArcadeSoundEngine ? window.ArcadeSoundEngine.isEnabled() : (localStorage.getItem("arcadeverse_sound_enabled") !== "false");
+      try {
+        gameIframe.contentWindow.postMessage({
+          type: "arcadeverse:sound-toggle",
+          enabled: isSoundEnabled,
+          muted: !isSoundEnabled
+        }, "*");
+      } catch (e) {}
+    };
+
     updateModalFavoriteButton(isFavorite(game.id));
 
     // Record game play in Recently Played drawer
@@ -352,6 +363,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   closeModalBtn.addEventListener("click", closeGameModal);
   modalOverlay.addEventListener("click", closeGameModal);
+
+  const modalSoundBtn = document.getElementById("modal-sound-btn");
+  if (modalSoundBtn) {
+    modalSoundBtn.addEventListener("click", () => {
+      if (window.ArcadeSoundEngine) {
+        window.ArcadeSoundEngine.toggle();
+      }
+    });
+  }
 
   if (modalFavBtn) {
     modalFavBtn.addEventListener("click", () => {

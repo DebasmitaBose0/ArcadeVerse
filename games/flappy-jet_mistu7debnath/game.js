@@ -272,10 +272,21 @@
   class SoundFX {
     constructor() {
       this.ctx = null;
-      this.isMuted = Storage.get('fcj_sound_muted', false);
+      const globalVal = localStorage.getItem("arcadeverse_sound_enabled");
+      this.isMuted = globalVal !== null ? globalVal === "false" : Storage.get('fcj_sound_muted', false);
+      window.addEventListener("message", (e) => {
+        if (e.data && typeof e.data.enabled === "boolean") {
+          this.isMuted = !e.data.enabled;
+          const icon = document.getElementById('fcj-sound-icon');
+          if (icon) {
+            icon.className = this.isMuted ? 'fcj-icon-muted' : 'fcj-icon-sound';
+          }
+        }
+      });
     }
 
     init() {
+      if (this.isMuted) return;
       if (!this.ctx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (AudioContextClass) {
@@ -287,6 +298,16 @@
       }
     }
 
+    isMasterMuted() {
+      if (this.isMuted) return true;
+      try {
+        if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+          return !window.parent.ArcadeSoundEngine.isEnabled();
+        }
+      } catch (e) {}
+      return false;
+    }
+
     toggleMute() {
       this.isMuted = !this.isMuted;
       Storage.set('fcj_sound_muted', this.isMuted);
@@ -294,7 +315,7 @@
     }
 
     playThrust() {
-      if (this.isMuted || !this.ctx) return;
+      if (this.isMasterMuted() || !this.ctx) return;
       try {
         const t = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();

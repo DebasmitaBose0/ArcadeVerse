@@ -172,7 +172,8 @@
 }
 
 /* Theme Navbar Toggle Button */
-.theme-toggle-btn {
+.theme-toggle-btn,
+.theme-palette-btn {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #cbd5e1;
@@ -189,14 +190,16 @@
   margin-right: 0.25rem;
 }
 
-.theme-toggle-btn svg {
+.theme-toggle-btn svg,
+.theme-palette-btn svg {
   width: 18px;
   height: 18px;
   stroke: currentColor;
   display: block;
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.theme-palette-btn:hover {
   background: rgba(255, 255, 255, 0.14);
   color: var(--accent-primary);
   border-color: rgba(var(--accent-rgb, 0, 240, 255), 0.4);

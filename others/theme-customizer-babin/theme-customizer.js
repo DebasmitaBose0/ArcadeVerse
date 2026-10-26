@@ -57,13 +57,15 @@
     }
   };
 
-  let currentTheme = localStorage.getItem("arcadeverse_theme") || "cyan";
+  const savedAccent = localStorage.getItem("arcadeverse_accent_theme");
+  let currentTheme = (savedAccent && THEMES[savedAccent]) ? savedAccent : (THEMES[localStorage.getItem("arcadeverse_theme")] ? localStorage.getItem("arcadeverse_theme") : "cyan");
   let isCrtEnabled = localStorage.getItem("arcadeverse_crt_enabled") === "true";
 
   function applyTheme(themeKey) {
-    const theme = THEMES[themeKey] || THEMES["cyan"];
+    if (!THEMES[themeKey]) themeKey = "cyan";
+    const theme = THEMES[themeKey];
     currentTheme = themeKey;
-    localStorage.setItem("arcadeverse_theme", themeKey);
+    localStorage.setItem("arcadeverse_accent_theme", themeKey);
 
     const root = document.documentElement;
     root.style.setProperty("--accent-primary", theme.primary);
@@ -76,7 +78,12 @@
     root.style.setProperty("--accent-light", theme.light);
     root.style.setProperty("--orb-1-color", theme.orb1);
     root.style.setProperty("--orb-2-color", theme.orb2);
-    root.setAttribute("data-theme", themeKey);
+    root.setAttribute("data-accent-theme", themeKey);
+
+    // Only set data-theme to palette key if not in light mode
+    if (root.getAttribute("data-theme-mode") !== "light" && root.getAttribute("data-theme") !== "light") {
+      root.setAttribute("data-theme", themeKey);
+    }
 
     // Update active swatch state in panel
     document.querySelectorAll(".theme-swatch").forEach(swatch => {
@@ -109,14 +116,14 @@
 
   function createThemePanel() {
     const navActions = document.querySelector(".nav-actions");
-    if (!navActions || document.getElementById("theme-toggle-btn")) return;
+    if (!navActions || document.getElementById("theme-palette-btn")) return;
 
     // Navbar palette button
     const themeBtn = document.createElement("button");
-    themeBtn.id = "theme-toggle-btn";
-    themeBtn.className = "btn btn-icon theme-toggle-btn";
-    themeBtn.setAttribute("title", "Customize Arcade Theme & CRT");
-    themeBtn.setAttribute("aria-label", "Customize Theme");
+    themeBtn.id = "theme-palette-btn";
+    themeBtn.className = "btn btn-icon theme-palette-btn";
+    themeBtn.setAttribute("title", "Customize Arcade Accent Palette & CRT");
+    themeBtn.setAttribute("aria-label", "Customize Accent Palette");
     themeBtn.innerHTML = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>

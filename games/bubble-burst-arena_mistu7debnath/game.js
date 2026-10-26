@@ -111,16 +111,37 @@
       this.ctx = null;
       this.enabled = true;
       try {
-        const saved = localStorage.getItem(CONFIG.STORAGE_KEY_SOUND);
-        if (saved !== null) {
-          this.enabled = saved === '1';
+        const globalVal = localStorage.getItem("arcadeverse_sound_enabled");
+        if (globalVal !== null) {
+          this.enabled = globalVal === "true";
+        } else {
+          const saved = localStorage.getItem(CONFIG.STORAGE_KEY_SOUND);
+          if (saved !== null) {
+            this.enabled = saved === '1';
+          }
         }
       } catch (e) {
         this.enabled = true;
       }
+      window.addEventListener("message", (e) => {
+        if (e.data && typeof e.data.enabled === "boolean") {
+          this.enabled = e.data.enabled;
+        }
+      });
+    }
+
+    isMasterMuted() {
+      if (!this.enabled) return true;
+      try {
+        if (window.parent && window.parent !== window && window.parent.ArcadeSoundEngine) {
+          return !window.parent.ArcadeSoundEngine.isEnabled();
+        }
+      } catch (e) {}
+      return false;
     }
 
     init() {
+      if (this.isMasterMuted()) return;
       if (!this.ctx) {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (AudioCtx) {
@@ -141,7 +162,7 @@
     }
 
     playShoot() {
-      if (!this.enabled) return;
+      if (this.isMasterMuted()) return;
       this.init();
       if (!this.ctx) return;
       const now = this.ctx.currentTime;
