@@ -1,0 +1,356 @@
+/* ==========================================================================
+   ArcadeVerse Game Favorites Component Styles
+   Folder: others/game-favorites-pratik/
+   Supports both background-plugin mode and standalone feature.html
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Card Favorite Button Enhancements & Accessible Focus
+   -------------------------------------------------------------------------- */
+.btn-card-favorite {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(12, 14, 20, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 5;
+  padding: 0;
+}
+
+:root[data-theme-mode="light"] .btn-card-favorite,
+:root[data-theme="light"] .btn-card-favorite,
+:root.light-theme .btn-card-favorite {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #64748b;
+}
+
+.btn-card-favorite:hover {
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(244, 63, 94, 0.45);
+  color: #f43f5e;
+  transform: scale(1.1);
+}
+
+.btn-card-favorite:focus-visible {
+  outline: 2px solid var(--accent-rose, #f43f5e);
+  outline-offset: 2px;
+}
+
+.btn-card-favorite .fav-heart-icon {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, stroke 0.2s ease;
+  pointer-events: none;
+}
+
+.btn-card-favorite.favorited {
+  background: rgba(244, 63, 94, 0.22);
+  border-color: rgba(244, 63, 94, 0.6);
+  color: #f43f5e;
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.35);
+}
+
+.btn-card-favorite.favorited .fav-heart-icon {
+  fill: #f43f5e;
+  stroke: #f43f5e;
+  transform: scale(1.12);
+}
+
+/* --------------------------------------------------------------------------
+   2. Dedicated Favorites Filter Pill & Navigation Badge
+   -------------------------------------------------------------------------- */
+.pill-favorites {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fca5a5;
+  transition: all 0.2s ease;
+}
+
+.pill-favorites:hover,
+.pill-favorites.active {
+  background: #f43f5e;
+  border-color: #f43f5e;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+}
+
+.favorites-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fecdd3;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.pill-favorites.active .favorites-count-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   3. Empty State Styling
+   -------------------------------------------------------------------------- */
+.favorites-empty-card {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--bg-surface, #131722);
+  border: 1px dashed rgba(244, 63, 94, 0.3);
+  border-radius: var(--radius-lg, 18px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.25));
+}
+
+:root[data-theme-mode="light"] .favorites-empty-card,
+:root[data-theme="light"] .favorites-empty-card,
+:root.light-theme .favorites-empty-card {
+  background: #ffffff;
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+.favorites-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+}
+
+.favorites-empty-icon svg {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+.favorites-empty-title {
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  margin: 0 0 0.5rem 0;
+}
+
+.favorites-empty-desc {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 0.95rem;
+  max-width: 500px;
+  line-height: 1.6;
+  margin: 0 0 1.5rem 0;
+}
+
+/* --------------------------------------------------------------------------
+   4. Standalone Tool Page Styles (feature.html)
+   -------------------------------------------------------------------------- */
+.favorites-page {
+  min-height: 100vh;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  background: var(--bg-main, #0c0e14);
+  color: var(--text-primary, #f8fafc);
+  box-sizing: border-box;
+}
+
+.favorites-container {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.favorites-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.favorites-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #f43f5e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.favorites-title {
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, var(--text-primary, #f8fafc) 30%, #f43f5e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.favorites-desc {
+  font-size: 0.95rem;
+  color: var(--text-secondary, #94a3b8);
+  max-width: 620px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Dashboard Action Bar */
+.favorites-dashboard-card {
+  background: var(--bg-card, rgba(22, 27, 40, 0.72));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg, 18px);
+  padding: 20px 24px;
+  box-shadow: var(--shadow-card, 0 10px 30px -10px rgba(0, 0, 0, 0.45));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+:root[data-theme-mode="light"] .favorites-dashboard-card,
+:root[data-theme="light"] .favorites-dashboard-card,
+:root.light-theme .favorites-dashboard-card {
+  background: var(--bg-card, rgba(255, 255, 255, 0.92));
+  border-color: var(--border-medium, rgba(15, 23, 42, 0.16));
+}
+
+.favorites-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.favorites-stat-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.favorites-stat-val {
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f43f5e;
+  line-height: 1.1;
+}
+
+.favorites-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary, #94a3b8);
+  letter-spacing: 0.05em;
+}
+
+.favorites-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md, 12px);
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #f8fafc);
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.action-btn.danger {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #f43f5e;
+}
+
+.action-btn.danger:hover {
+  background: rgba(244, 63, 94, 0.22);
+  color: #ffffff;
+}
+
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* Documentation Card */
+.favorites-doc-card {
+  background: var(--bg-card, rgba(22, 27, 40, 0.72));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-lg, 18px);
+  padding: 24px;
+  box-shadow: var(--shadow-card, 0 10px 30px -10px rgba(0, 0, 0, 0.45));
+  margin-top: 32px;
+}
+
+:root[data-theme-mode="light"] .favorites-doc-card,
+:root[data-theme="light"] .favorites-doc-card,
+:root.light-theme .favorites-doc-card {
+  background: var(--bg-card, rgba(255, 255, 255, 0.92));
+  border-color: var(--border-medium, rgba(15, 23, 42, 0.16));
+}
+
+@media (max-width: 768px) {
+  .favorites-page {
+    padding: 20px 14px;
+  }
+  .favorites-title {
+    font-size: 1.6rem;
+  }
+  .favorites-dashboard-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

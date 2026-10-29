@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-mode="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcadeVerse — Favorites Vault & Management</title>
+  <meta name="description" content="Manage and play your bookmarked favorite ArcadeVerse games with persistent namespaced storage.">
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="feature.css">
+</head>
+<body class="favorites-page">
+  <div class="favorites-container">
+
+    <!-- Header Section -->
+    <header class="favorites-header">
+      <div class="favorites-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+        Favorites Vault
+      </div>
+      <h1 class="favorites-title">My Bookmarked Games</h1>
+      <p class="favorites-desc">
+        Your personally saved arcade titles. Persisted locally under <code>arcadeverse:preferences:favorites</code> with cross-tab real-time synchronization.
+      </p>
+    </header>
+
+    <!-- Controls & Dashboard Summary Card -->
+    <main>
+      <section class="favorites-dashboard-card" aria-label="Favorites Management Controls">
+        <div class="favorites-stats">
+          <div class="favorites-stat-item">
+            <span class="favorites-stat-val" id="standalone-favorites-count">0</span>
+            <span class="favorites-stat-label">Saved Favorites</span>
+          </div>
+        </div>
+
+        <div class="favorites-actions-group">
+          <button type="button" class="action-btn" id="export-favs-btn" title="Export favorites as JSON backup" aria-label="Export favorites as JSON">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export JSON
+          </button>
+          <button type="button" class="action-btn danger" id="clear-all-favs-btn" title="Clear all saved favorites" aria-label="Clear all favorites">
+            <svg viewBox="0 0 24 24" fill="none"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            Clear All
+          </button>
+          <a href="../../index.html" class="action-btn" title="Return to ArcadeVerse catalog">
+            <svg viewBox="0 0 24 24" fill="none"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Catalog
+          </a>
+        </div>
+      </section>
+
+      <!-- Favorites Grid -->
+      <section aria-label="Favorites Games Collection">
+        <div class="games-grid" id="standalone-favorites-grid">
+          <!-- Dynamically populated -->
+        </div>
+      </section>
+
+      <!-- Architecture & Storage Documentation -->
+      <article class="favorites-doc-card">
+        <h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          Favorites Architecture & Persistence
+        </h3>
+        <p style="font-size: 0.88rem; color: var(--text-secondary, #94a3b8); line-height: 1.6;">
+          The favorites system uses a high-performance, single-source-of-truth manager backed by HTML5 <code>localStorage</code>:
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-secondary, #94a3b8); line-height: 1.7; padding-left: 20px;">
+          <li><strong>Namespaced Key:</strong> <code>arcadeverse:preferences:favorites</code> stores an array of unique game IDs.</li>
+          <li><strong>Backward Compatibility:</strong> Keeps the legacy key <code>arcadeverse_favorite_games</code> in sync so existing platform utilities function smoothly.</li>
+          <li><strong>DOM Event Safety:</strong> Favorite toggle clicks call <code>e.stopPropagation()</code> to prevent unintended game modal launches.</li>
+          <li><strong>Real-Time Sync:</strong> Listens to the <code>window.storage</code> event to instantly synchronize bookmark states across multiple browser tabs.</li>
+        </ul>
+      </article>
+    </main>
+
+  </div>
+
+  <!-- Standalone Play Modal -->
+  <div class="game-modal" id="standalone-play-modal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-overlay"></div>
+    <div class="modal-window">
+      <div class="modal-topbar">
+        <div class="modal-game-info">
+          <h3 class="modal-game-title" id="standalone-modal-game-title">Play Game</h3>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-icon" id="close-standalone-modal" aria-label="Close game modal">&times;</button>
+        </div>
+      </div>
+      <div class="modal-game-container">
+        <iframe id="standalone-play-iframe" class="game-iframe" title="Game Canvas"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../../assets/js/games-registry.js"></script>
+  <script src="feature.js"></script>
+</body>
+</html>

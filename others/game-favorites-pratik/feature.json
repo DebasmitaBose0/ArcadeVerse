@@ -1,0 +1,21 @@
+{
+  "id": "game-favorites-pratik",
+  "title": "Game Favorites Management Engine",
+  "category": "Platform",
+  "type": "background-plugin",
+  "lucideIcon": "heart",
+  "description": "Save favorite games and quickly access them through a persistent, accessible favorites view.",
+  "author": "Pratik Giri",
+  "github": "pratikadamas",
+  "entryHtml": "feature.html",
+  "js": "feature.js",
+  "css": "feature.css",
+  "tags": [
+    "Favorites",
+    "Bookmarks",
+    "Games",
+    "Platform",
+    "Storage",
+    "NSOC26"
+  ]
+}
