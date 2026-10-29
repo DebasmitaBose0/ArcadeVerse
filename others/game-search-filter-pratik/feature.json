@@ -1,0 +1,22 @@
+{
+  "id": "game-search-filter-pratik",
+  "title": "Dynamic Game Search & Tag Filter Engine",
+  "category": "Platform",
+  "type": "background-plugin",
+  "lucideIcon": "search",
+  "description": "Real-time game title search, dynamic category discovery, multi-tag filtering, and accessible result feedback.",
+  "author": "Pratik Giri",
+  "github": "pratikadamas",
+  "entryHtml": "feature.html",
+  "js": "feature.js",
+  "css": "feature.css",
+  "tags": [
+    "Search",
+    "Filter",
+    "Tags",
+    "Categories",
+    "Platform",
+    "A11y",
+    "NSOC26"
+  ]
+}
