@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme-mode="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcadeVerse — Theme & Master Sound Preferences</title>
+  <meta name="description" content="Centralized theme switcher and global sound preference controls for ArcadeVerse.">
+  <link rel="stylesheet" href="../../assets/css/style.css">
+  <link rel="stylesheet" href="feature.css">
+</head>
+<body class="standalone-pref-page">
+  <div class="standalone-pref-container">
+
+    <!-- Header Section -->
+    <header class="standalone-pref-header">
+      <div class="standalone-pref-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Preferences Engine
+      </div>
+      <h1 class="standalone-pref-title">Theme & Audio Preferences</h1>
+      <p class="standalone-pref-desc">
+        Customize your visual display mode and configure global audio preferences across compatible ArcadeVerse games and tools.
+      </p>
+    </header>
+
+    <!-- Main Controls Grid -->
+    <main class="standalone-grid">
+
+      <!-- Card 1: Theme Switcher -->
+      <section class="standalone-card" aria-labelledby="theme-card-heading">
+        <div>
+          <h2 class="standalone-card-title" id="theme-card-heading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+            Theme Mode
+          </h2>
+          <p class="standalone-card-desc">
+            Switch between high-contrast Dark and modern Light themes. Theme choices are persisted to localStorage under <code>arcadeverse:preferences:theme</code>.
+          </p>
+
+          <div class="preferences-group">
+            <div class="preferences-label-row">
+              <span class="preferences-group-label" id="standalone-theme-label">Active Palette</span>
+              <span class="preferences-status-badge" data-pref-theme-status>Dark</span>
+            </div>
+
+            <div class="theme-segmented-control" role="radiogroup" aria-labelledby="standalone-theme-label">
+              <button type="button" class="theme-segment-btn" role="radio" data-pref-theme-segment="dark" aria-label="Dark Mode" aria-checked="false">
+                <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
+                Dark Mode
+              </button>
+              <button type="button" class="theme-segment-btn" role="radio" data-pref-theme-segment="light" aria-label="Light Mode" aria-checked="false">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+                Light Mode
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button type="button" class="preferences-action-btn" data-pref-reset-theme-btn style="display: none; width: 100%; justify-content: center; margin-top: 10px;">
+            <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+            Reset to System Preference
+          </button>
+        </div>
+      </section>
+
+      <!-- Card 2: Centralized Master Sound -->
+      <section class="standalone-card" aria-labelledby="sound-card-heading">
+        <div>
+          <h2 class="standalone-card-title" id="sound-card-heading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            Master Audio Mute
+          </h2>
+          <p class="standalone-card-desc">
+            Toggle centralized audio mute across compatible games. Defaults to unmuted and stores preference in <code>arcadeverse:preferences:muted</code>.
+          </p>
+
+          <div class="sound-toggle-card">
+            <div class="sound-toggle-info">
+              <div class="sound-toggle-icon">
+                <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+              </div>
+              <div class="sound-toggle-meta">
+                <span class="sound-toggle-title">Sound Effects & Music</span>
+                <span class="sound-toggle-subtitle" data-pref-sound-status>Unmuted</span>
+              </div>
+            </div>
+            <label class="switch-control" for="standalone-sound-switch">
+              <input type="checkbox" id="standalone-sound-switch" data-pref-sound-switch aria-label="Toggle master audio preference">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Web Audio Test Button -->
+          <button type="button" class="audio-test-btn" id="play-test-sound-btn" aria-label="Play test audio tone to verify sound state">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            Test Web Audio Tone
+          </button>
+
+          <div class="sim-feedback-box" id="audio-test-feedback" aria-live="polite">
+            [STANDBY] Click "Test Web Audio Tone" to test audio synthesis.
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Architecture & Compatibility Documentation -->
+    <article class="standalone-doc-card">
+      <h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        Audio Compatibility & Architectural Integration
+      </h3>
+      <p style="font-size: 0.88rem; color: var(--text-secondary, #94a3b8); line-height: 1.6;">
+        ArcadeVerse embeds games inside isolated <code>&lt;iframe&gt;</code> elements to guarantee security and prevent DOM collisions.
+        Master audio preferences are communicated to compatible games via three non-invasive integration layers without breaking game-specific volume sliders or unsupported titles:
+      </p>
+
+      <table class="doc-table">
+        <thead>
+          <tr>
+            <th>Integration Channel</th>
+            <th>Mechanism</th>
+            <th>Compatibility Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Cross-Frame Messaging</strong></td>
+            <td><code>postMessage({ type: 'arcadeverse:sound-toggle', enabled, muted }, '*')</code></td>
+            <td><span class="doc-tag compat">Fully Supported</span></td>
+          </tr>
+          <tr>
+            <td><strong>Parent Audio Manager</strong></td>
+            <td><code>window.parent.ArcadePreferences.isMuted()</code> / <code>window.parent.ArcadeSoundEngine</code></td>
+            <td><span class="doc-tag compat">Fully Supported</span></td>
+          </tr>
+          <tr>
+            <td><strong>Namespaced Storage</strong></td>
+            <td><code>localStorage.getItem('arcadeverse:preferences:muted')</code></td>
+            <td><span class="doc-tag compat">Fully Supported</span></td>
+          </tr>
+          <tr>
+            <td><strong>Isolated Web Audio</strong></td>
+            <td>Games creating local AudioContext without checking parent or postMessage</td>
+            <td><span class="doc-tag isolated">Independent (Preserved)</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="../../index.html" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg>
+          Return to Arcade Station
+        </a>
+      </div>
+    </article>
+
+  </div>
+
+  <!-- Component Logic -->
+  <script src="feature.js"></script>
+</body>
+</html>

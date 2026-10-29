@@ -1,0 +1,22 @@
+{
+  "id": "theme-sound-preferences-pratik",
+  "title": "Theme Customizer & Global Sound Preference",
+  "category": "Platform",
+  "type": "background-plugin",
+  "lucideIcon": "sliders",
+  "description": "Persistent dark/light theme toggle with system preference sync and centralized master mute preference for compatible games.",
+  "author": "Pratik Giri",
+  "github": "pratikadamas",
+  "entryHtml": "feature.html",
+  "js": "feature.js",
+  "css": "feature.css",
+  "tags": [
+    "Theme",
+    "DarkMode",
+    "Sound",
+    "Audio",
+    "Preferences",
+    "A11y",
+    "NSOC26"
+  ]
+}
