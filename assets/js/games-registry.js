@@ -928,7 +928,7 @@ const CONTRIBUTORS_REGISTRY = [
     "github": "Babin123456",
     "avatarInitial": "B",
     "role": "Arcade Developer (NSOC '26)",
-    "commits": 147,
+    "commits": 151,
     "gamesCount": 25,
     "mechanicsBonus": 2,
     "platformPRs": 29,
