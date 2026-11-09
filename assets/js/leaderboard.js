@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("leaderboard-search-input");
   const roleFilterSelect = document.getElementById("leaderboard-role-filter");
   const exportCsvBtn = document.getElementById("export-csv-btn");
+  const exportJsonBtn = document.getElementById("export-json-btn");
   let tableSearchQuery = "";
   let currentRoleFilter = "all";
   let searchDebounceTimer = null;

@@ -337,6 +337,26 @@ const GAMES_REGISTRY = [
     "releaseDate": "2026-10-29"
   },
   {
+    "id": "cyber-bomber-grid_chanchall26",
+    "title": "Cyber Bomber Grid: Blast Protocol",
+    "category": "Arcade",
+    "lucideIcon": "gamepad-2",
+    "description": "Plant timed charges in a neon grid arena, chain explosions through blocks, grab blast range, capacity and speed upgrades, and outlast three BFS-driven bots (hunter, block-breaker, cautious) before sudden death closes the arena.",
+    "author": "Chanchal Gupta",
+    "github": "chanchall26",
+    "role": "Arcade Developer",
+    "path": "games/cyber-bomber-grid_chanchall26/index.html",
+    "tags": [
+      "Arcade",
+      "Bomberman",
+      "Grid",
+      "AI",
+      "NSOC26"
+    ],
+    "stars": 25,
+    "featured": false
+  },
+  {
     "id": "cyber-brick-breaker_babin",
     "title": "Cyber Brick Breaker",
     "category": "Arcade",
@@ -1083,6 +1103,25 @@ const GAMES_REGISTRY = [
     "featured": true
   },
   {
+    "id": "fossil-frontiers_joitapaul",
+    "title": "Fossil Frontiers: Dig Site Puzzle",
+    "category": "Puzzle",
+    "lucideIcon": "gamepad-2",
+    "description": "Survey a buried dig site, follow temporary fragment clues, and recover a complete fossil before tool charges run out.",
+    "author": "Joita Paul",
+    "github": "joitapaul",
+    "role": "Arcade Developer",
+    "path": "games/fossil-frontiers_joitapaul/index.html",
+    "tags": [
+      "Puzzle",
+      "Archaeology",
+      "Strategy",
+      "NSOC26"
+    ],
+    "stars": 25,
+    "featured": false
+  },
+  {
     "id": "gravity-well_babin",
     "title": "Gravity Well: Singularity Slingshot",
     "category": "Puzzle / Physics",
@@ -1327,6 +1366,26 @@ const GAMES_REGISTRY = [
       "Halloween",
       "Maze",
       "Adventure",
+      "NSOC26"
+    ],
+    "stars": 25,
+    "featured": false
+  },
+  {
+    "id": "neon-air-hockey_chanchall26",
+    "title": "Neon Air Hockey: Plasma Puck Arena",
+    "category": "Arcade",
+    "lucideIcon": "gamepad-2",
+    "description": "Top-down neon air hockey with real puck physics: swing a mallet, bank shots off the rim and beat a predictive AI on three levels. First to 7 goals wins.",
+    "author": "Chanchal Gupta",
+    "github": "chanchall26",
+    "role": "Arcade Developer",
+    "path": "games/neon-air-hockey_chanchall26/index.html",
+    "tags": [
+      "Arcade",
+      "Physics",
+      "Sports",
+      "AI",
       "NSOC26"
     ],
     "stars": 25,
@@ -1737,6 +1796,25 @@ const GAMES_REGISTRY = [
     ],
     "stars": 25,
     "featured": true
+  },
+  {
+    "id": "parcel-panic_joitapaul",
+    "title": "Parcel Panic: Conveyor Shift",
+    "category": "Puzzle",
+    "lucideIcon": "gamepad-2",
+    "description": "Rotate conveyor tiles to route labeled parcels through a sorting floor to their matching destinations across three stages.",
+    "author": "Joita Paul",
+    "github": "joitapaul",
+    "role": "Arcade Developer",
+    "path": "games/parcel-panic_joitapaul/index.html",
+    "tags": [
+      "Puzzle",
+      "Strategy",
+      "Logic",
+      "NSOC26"
+    ],
+    "stars": 25,
+    "featured": false
   },
   {
     "id": "potion-maker_mistu7debnath",
@@ -2307,7 +2385,7 @@ const CONTRIBUTORS_REGISTRY = [
     "github": "DebasmitaBose0",
     "avatarInitial": "D",
     "role": "Project Admin & Lead (NSOC '26)",
-    "commits": 437,
+    "commits": 443,
     "gamesCount": 6,
     "mechanicsBonus": 2,
     "platformPRs": 2,
@@ -2327,7 +2405,7 @@ const CONTRIBUTORS_REGISTRY = [
     "github": "Babin123456",
     "avatarInitial": "B",
     "role": "Arcade Developer (NSOC '26)",
-    "commits": 272,
+    "commits": 276,
     "gamesCount": 76,
     "mechanicsBonus": 2,
     "platformPRs": 29,
@@ -2417,20 +2495,22 @@ const CONTRIBUTORS_REGISTRY = [
     "github": "joitapaul",
     "avatarInitial": "J",
     "role": "Active Contributor (NSOC '26)",
-    "commits": 22,
-    "gamesCount": 11,
+    "commits": 24,
+    "gamesCount": 13,
     "mechanicsBonus": 0,
     "platformPRs": 0,
     "qualityPRs": 1,
     "bonusPts": 0,
     "contributions": [
       "Deep Signal: Subsea Rescue",
+      "Fossil Frontiers: Dig Site Puzzle",
       "Gridlock Escape",
       "Lunar Landing Protocol",
       "Microbe Medics: Outbreak Protocol",
       "Midnight Graveyard: Lantern Run",
       "Neon Asteroid Escape",
       "Neon Drift Racer",
+      "Parcel Panic: Conveyor Shift",
       "Potion Panic",
       "Prism Pulse: Laser Labyrinth",
       "Pumpkin Express: Haunted Rails",
@@ -2467,16 +2547,18 @@ const CONTRIBUTORS_REGISTRY = [
     "github": "chanchall26",
     "avatarInitial": "C",
     "role": "Arcade Developer",
-    "commits": 5,
-    "gamesCount": 5,
+    "commits": 8,
+    "gamesCount": 7,
     "mechanicsBonus": 0,
     "platformPRs": 0,
     "qualityPRs": 0,
     "bonusPts": 0,
     "contributions": [
+      "Cyber Bomber Grid: Blast Protocol",
       "Cyber Connect Four",
       "Cyber Maze Runner",
       "Cyber Trajectory Bow",
+      "Neon Air Hockey: Plasma Puck Arena",
       "Neon Highway Hopper",
       "Quantum Lunar Lander"
     ]
@@ -2558,26 +2640,11 @@ const CONTRIBUTORS_REGISTRY = [
     ]
   },
   {
-    "name": "sarbajit-sengupta",
-    "github": "sarbajit-sengupta",
+    "name": "Sarbajit Sengupta",
+    "github": "Sarbajit-Sengupta",
     "avatarInitial": "S",
     "role": "Contributor (NSOC '26)",
-    "commits": 1,
-    "gamesCount": 0,
-    "mechanicsBonus": 0,
-    "platformPRs": 0,
-    "qualityPRs": 0,
-    "bonusPts": 0,
-    "contributions": [
-      "Quality & Platform Contribution"
-    ]
-  },
-  {
-    "name": "sarbajitsengupta",
-    "github": "sarbajitsengupta",
-    "avatarInitial": "S",
-    "role": "Contributor (NSOC '26)",
-    "commits": 1,
+    "commits": 2,
     "gamesCount": 0,
     "mechanicsBonus": 0,
     "platformPRs": 0,
