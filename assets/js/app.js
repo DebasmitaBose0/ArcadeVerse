@@ -3425,4 +3425,282 @@ document.addEventListener("DOMContentLoaded", () => {
   initCatalogViewSwitcher();
   initAZJumpBar();
   initURLDeepLinking();
+  initTimeCapsule();
 });
+
+  // ========================================================
+  // ARCADE TIME CAPSULE & MILESTONE CHRONOLOGY ENGINE (#Feature)
+  // Dynamic roadmap, era data mapping, and milestone nodes
+  // ========================================================
+  const ARCADE_TIME_CAPSULE_ERAS = [
+    {
+      id: "genesis",
+      badge: "Genesis Pioneers",
+      date: "Oct 2026 - Launch",
+      title: "Genesis Launch: Foundation of ArcadeVerse",
+      desc: "The initial launch cohort that started the platform with classic pure-canvas retro arcades and the distraction-free modal runtime.",
+      gameIds: [
+        "asteroid-miner_babin",
+        "space-invaders_babin",
+        "cyber-brick-breaker_hrshjswniii",
+        "cyber-neon-pong_debasmita",
+        "whack-a-bug_babin",
+        "retro-space-lander_babin",
+        "astro-infinite-jumper_pragna7"
+      ]
+    },
+    {
+      id: "spooky",
+      badge: "Halloween Hackathon",
+      date: "Late Oct 2026",
+      title: "Spooky Season Special: Atmospheric & Story Quests",
+      desc: "The community Halloween event introducing multi-room escape adventures, puzzle riddles, atmospheric audio synthesizers, and procedural maze running.",
+      gameIds: [
+        "escape-room_debasmita",
+        "haunted-house_debasmita",
+        "pumpkin-express_joitapaul",
+        "midnight-graveyard_joitapaul",
+        "island-survival_debasmita",
+        "potion-panic_joitapaul"
+      ]
+    },
+    {
+      id: "cyber",
+      badge: "Cyber & Quantum Wave",
+      date: "Early Nov 2026",
+      title: "Quantum Expansion: Physics Engines & Logic Puzzles",
+      desc: "A massive influx of advanced arcade mechanics: quantum grid logic, typing defense speed challenges, 2D tank duels, and precision reticle games.",
+      gameIds: [
+        "quantum-minesweeper-dx_babin",
+        "cyber-typer_hrshjswniii",
+        "cyber-katana_babin",
+        "quantum-2048_babin",
+        "cyber-tanks_babin",
+        "neon-solitaire_babin",
+        "quantum-sokoban_babin",
+        "cyber-circuit-scramble_babin"
+      ]
+    },
+    {
+      id: "centurion",
+      badge: "Centurion Milestone",
+      date: "Nov 2026 - Present",
+      title: "100+ Games Milestone: Open Source Expansion",
+      desc: "ArcadeVerse crosses 100+ community games and 70+ open source contributors, featuring factory automation, underwater expeditions, and medieval strategy.",
+      gameIds: [
+        "cyber-traffic-control_babin",
+        "neon-infiltration_babin",
+        "potion-maker_mistu7debnath",
+        "deep-sea-explorer_mistu7debnath",
+        "robo-factory_mistu7debnath",
+        "kingdom-maker_mistu7debnath",
+        "neon-darts_babin",
+        "coolant-flow_babin"
+      ]
+    }
+  ];
+
+  let timeCapsuleContainer = null;
+  let timeCapsuleTriggerBtn = null;
+  let activeEraFilter = "all";
+
+  function renderTimeCapsuleMilestones(filterEra = "all") {
+    if (!timeCapsuleContainer) return;
+    const track = timeCapsuleContainer.querySelector("#timeline-track-content");
+    if (!track) return;
+
+    const filteredEras = filterEra === "all"
+      ? ARCADE_TIME_CAPSULE_ERAS
+      : ARCADE_TIME_CAPSULE_ERAS.filter((e) => e.id === filterEra);
+
+    const registry = typeof GAMES_REGISTRY !== "undefined" && Array.isArray(GAMES_REGISTRY) ? GAMES_REGISTRY : [];
+
+    const nodesHtml = filteredEras
+      .map((era) => {
+        const gameChipsHtml = era.gameIds
+          .map((id) => {
+            const game = registry.find((g) => g.id === id);
+            if (!game) return "";
+            return `
+              <div class="timeline-game-chip" data-game-id="${game.id}" role="button" tabindex="0" title="Launch ${game.title} (Play Now)">
+                <div class="timeline-game-chip-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                </div>
+                <span class="timeline-game-chip-title">${game.title}</span>
+              </div>
+            `;
+          })
+          .join("");
+
+        return `
+          <div class="timeline-node" data-era="${era.id}">
+            <div class="timeline-marker" aria-hidden="true"></div>
+            <div class="timeline-card">
+              <div class="timeline-card-header">
+                <span class="timeline-era-badge">${era.badge}</span>
+                <span class="timeline-date">${era.date}</span>
+              </div>
+              <h4 class="timeline-milestone-title">${era.title}</h4>
+              <p class="timeline-milestone-desc">${era.desc}</p>
+              <div class="timeline-games-grid">
+                ${gameChipsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    track.innerHTML = nodesHtml;
+
+    // Bind interactive game chip launchers
+    const chips = track.querySelectorAll(".timeline-game-chip");
+    chips.forEach((chip) => {
+      const launchGame = () => {
+        const gameId = chip.getAttribute("data-game-id");
+        if (!gameId) return;
+        const game = registry.find((g) => g.id === gameId);
+        if (game && typeof openGameModal === "function") {
+          openGameModal(game, chip);
+        }
+      };
+
+      chip.addEventListener("click", launchGame);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          launchGame();
+        }
+      });
+    });
+  }
+
+  function initTimeCapsule() {
+    const toolbar = document.querySelector(".games-toolbar-controls");
+    const gamesGrid = document.getElementById("games-grid");
+    if (!toolbar || !gamesGrid) return;
+
+    // Create and inject Time Capsule Toolbar Trigger Button
+    timeCapsuleTriggerBtn = document.createElement("button");
+    timeCapsuleTriggerBtn.type = "button";
+    timeCapsuleTriggerBtn.className = "time-capsule-trigger-btn";
+    timeCapsuleTriggerBtn.id = "trigger-time-capsule-btn";
+    timeCapsuleTriggerBtn.title = "Explore Arcade Time Capsule & Milestone Chronology";
+    timeCapsuleTriggerBtn.setAttribute("aria-label", "Explore Arcade Time Capsule and Milestone Chronology");
+    timeCapsuleTriggerBtn.setAttribute("aria-expanded", "false");
+    timeCapsuleTriggerBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span>Time Capsule</span>
+    `;
+
+    toolbar.appendChild(timeCapsuleTriggerBtn);
+
+    // Create Time Capsule Section Component
+    timeCapsuleContainer = document.createElement("section");
+    timeCapsuleContainer.id = "arcade-time-capsule-section";
+    timeCapsuleContainer.className = "time-capsule-container";
+    timeCapsuleContainer.style.display = "none";
+    timeCapsuleContainer.setAttribute("aria-label", "Arcade Time Capsule Chronology Roadmap");
+
+    timeCapsuleContainer.innerHTML = `
+      <div class="time-capsule-header">
+        <div class="time-capsule-title-wrap">
+          <div class="time-capsule-header-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div>
+            <h3 class="time-capsule-title">ArcadeVerse Time Capsule</h3>
+            <p class="time-capsule-subtitle">Evolutionary Journey of Community Games &amp; Open Source Milestones</p>
+          </div>
+        </div>
+        <button type="button" class="btn-time-capsule-close" id="close-time-capsule-btn" aria-label="Close Time Capsule">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Return to Catalog</span>
+        </button>
+      </div>
+
+      <nav class="time-capsule-nav" aria-label="Time capsule era filters">
+        <button type="button" class="era-tab-btn active" data-era="all">All Eras (118+ Games)</button>
+        <button type="button" class="era-tab-btn" data-era="genesis">Genesis Pioneers</button>
+        <button type="button" class="era-tab-btn" data-era="spooky">Halloween Hackathon</button>
+        <button type="button" class="era-tab-btn" data-era="cyber">Cyber &amp; Quantum Wave</button>
+        <button type="button" class="era-tab-btn" data-era="centurion">Centurion 100+</button>
+      </nav>
+
+      <div class="timeline-track" id="timeline-track-content">
+        <!-- Rendered milestone nodes -->
+      </div>
+    `;
+
+    // Mount above gamesGrid
+    gamesGrid.parentElement.insertBefore(timeCapsuleContainer, gamesGrid);
+
+    function openTimeCapsule() {
+      if (!timeCapsuleContainer || !timeCapsuleTriggerBtn) return;
+      timeCapsuleContainer.style.display = "block";
+      timeCapsuleTriggerBtn.classList.add("active");
+      timeCapsuleTriggerBtn.setAttribute("aria-expanded", "true");
+      try {
+        timeCapsuleContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_) {}
+    }
+
+    function closeTimeCapsule() {
+      if (!timeCapsuleContainer || !timeCapsuleTriggerBtn) return;
+      timeCapsuleContainer.style.display = "none";
+      timeCapsuleTriggerBtn.classList.remove("active");
+      timeCapsuleTriggerBtn.setAttribute("aria-expanded", "false");
+      try {
+        timeCapsuleTriggerBtn.focus();
+      } catch (_) {}
+    }
+
+    timeCapsuleTriggerBtn.addEventListener("click", () => {
+      if (timeCapsuleContainer.style.display === "none") {
+        openTimeCapsule();
+      } else {
+        closeTimeCapsule();
+      }
+    });
+
+    const closeBtn = timeCapsuleContainer.querySelector("#close-time-capsule-btn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeTimeCapsule);
+    }
+
+    // Bind Era filter tabs
+    const eraTabs = timeCapsuleContainer.querySelectorAll(".era-tab-btn");
+    eraTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        eraTabs.forEach((t) => t.classList.remove("active"));
+        tab.classList.add("active");
+        activeEraFilter = tab.getAttribute("data-era");
+        renderTimeCapsuleMilestones(activeEraFilter);
+      });
+    });
+
+    // Keyboard listener to dismiss Time Capsule with Escape key when game modal is not active
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (timeCapsuleContainer && timeCapsuleContainer.style.display !== "none") {
+          const gameModal = document.getElementById("game-modal");
+          if (!gameModal || !gameModal.classList.contains("active")) {
+            closeTimeCapsule();
+          }
+        }
+      }
+    });
+
+    renderTimeCapsuleMilestones("all");
+  }
