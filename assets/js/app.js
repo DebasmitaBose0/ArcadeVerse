@@ -3554,6 +3554,27 @@ document.addEventListener("DOMContentLoaded", () => {
       .join("");
 
     track.innerHTML = nodesHtml;
+
+    // Bind interactive game chip launchers
+    const chips = track.querySelectorAll(".timeline-game-chip");
+    chips.forEach((chip) => {
+      const launchGame = () => {
+        const gameId = chip.getAttribute("data-game-id");
+        if (!gameId) return;
+        const game = registry.find((g) => g.id === gameId);
+        if (game && typeof openGameModal === "function") {
+          openGameModal(game, chip);
+        }
+      };
+
+      chip.addEventListener("click", launchGame);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          launchGame();
+        }
+      });
+    });
   }
 
   function initTimeCapsule() {
@@ -3625,6 +3646,39 @@ document.addEventListener("DOMContentLoaded", () => {
     // Mount above gamesGrid
     gamesGrid.parentElement.insertBefore(timeCapsuleContainer, gamesGrid);
 
+    function openTimeCapsule() {
+      if (!timeCapsuleContainer || !timeCapsuleTriggerBtn) return;
+      timeCapsuleContainer.style.display = "block";
+      timeCapsuleTriggerBtn.classList.add("active");
+      timeCapsuleTriggerBtn.setAttribute("aria-expanded", "true");
+      try {
+        timeCapsuleContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_) {}
+    }
+
+    function closeTimeCapsule() {
+      if (!timeCapsuleContainer || !timeCapsuleTriggerBtn) return;
+      timeCapsuleContainer.style.display = "none";
+      timeCapsuleTriggerBtn.classList.remove("active");
+      timeCapsuleTriggerBtn.setAttribute("aria-expanded", "false");
+      try {
+        timeCapsuleTriggerBtn.focus();
+      } catch (_) {}
+    }
+
+    timeCapsuleTriggerBtn.addEventListener("click", () => {
+      if (timeCapsuleContainer.style.display === "none") {
+        openTimeCapsule();
+      } else {
+        closeTimeCapsule();
+      }
+    });
+
+    const closeBtn = timeCapsuleContainer.querySelector("#close-time-capsule-btn");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeTimeCapsule);
+    }
+
     // Bind Era filter tabs
     const eraTabs = timeCapsuleContainer.querySelectorAll(".era-tab-btn");
     eraTabs.forEach((tab) => {
@@ -3634,6 +3688,18 @@ document.addEventListener("DOMContentLoaded", () => {
         activeEraFilter = tab.getAttribute("data-era");
         renderTimeCapsuleMilestones(activeEraFilter);
       });
+    });
+
+    // Keyboard listener to dismiss Time Capsule with Escape key when game modal is not active
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (timeCapsuleContainer && timeCapsuleContainer.style.display !== "none") {
+          const gameModal = document.getElementById("game-modal");
+          if (!gameModal || !gameModal.classList.contains("active")) {
+            closeTimeCapsule();
+          }
+        }
+      }
     });
 
     renderTimeCapsuleMilestones("all");
