@@ -1,13 +1,6 @@
 /**
  * Hall of Fame Live GitHub Contributors & Ranking Engine
  * Fetches real contributor stats from GitHub API (or seamlessly merges with games-registry)
- *
- * Architecture:
- * Admin (Project Lead) has a dedicated separate rank card at the top.
- * Podium and Leaderboard Table display ONLY Community Contributors.
- * Cards are static by default, with an elegant corner gradient radiating on hover.
- * Dual-category highest badges: Displays highest Game Dedicated badge and highest Milestone badge.
- * Direct GitHub Activity column with clickable links for Issues and PRs.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -24,7 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentRoleFilter = "all";
   let searchDebounceTimer = null;
 
-  // Standings Table Pagination & Page Size State
+  // Versus Compare State
+  let selectedCompareLogins = [];
+
   const paginationBar = document.getElementById("leaderboard-pagination-bar");
   const paginationInfo = document.getElementById("leaderboard-pagination-info");
   const pageSizeSelect = document.getElementById("leaderboard-page-size");
@@ -36,12 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let pageSize = 10;
   let currentTotalPages = 1;
 
-  // Escape regex special characters safely
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
-  // Highlight matching query substring safely escaped
   function highlightMatch(text, query) {
     if (!text) return "";
     const safeText = String(text)
@@ -172,7 +165,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Leaderboard Switcher (Community Contributors vs Admin View)
   const switchContribBtn = document.getElementById("switch-contributors-btn");
   const switchAdminBtn = document.getElementById("switch-admin-btn");
   const viewContributors = document.getElementById("view-contributors");
@@ -197,12 +189,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const CACHE_KEY = "arcadeverse_contributors_cache_v2";
-  const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-  // Initial verified contributors from repository
+  const CACHE_TTL = 30 * 60 * 1000;
   let contributorsData = [];
 
-  // Sync contributors data with local CONTRIBUTORS_REGISTRY and GAMES_REGISTRY
   function loadRegistryContributors() {
     if (
       typeof CONTRIBUTORS_REGISTRY === "undefined" ||
@@ -225,7 +214,12 @@ document.addEventListener("DOMContentLoaded", () => {
         userGames.length > 0 ? userGames.length : regUser.gamesCount || 0;
       const gamesList =
         userGames.length > 0
-          ? userGames.map((g) => g.title)
+          ? userGames.map((g) => ({
+              title: g.title,
+              category: g.category,
+              role: g.role,
+              tags: g.tags,
+            }))
           : regUser.contributions || [];
 
       return {
@@ -244,7 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Universal In-App Arcade Point System:
   function calculateScore(item) {
     const gamePts = (item.gamesCount || 0) * 100;
     const mechanicsPts = (item.mechanicsBonus || 0) * 25;
@@ -252,17 +245,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const fixPts = (item.qualityPRs || 0) * 25;
     const commitPts = (item.commits || 0) * 5;
     const bonus = item.bonusPts || 0;
-
     return gamePts + mechanicsPts + featurePts + fixPts + commitPts + bonus;
   }
 
-  // Contributor Badges Engine:
   function getContributorBadges(user) {
     const badges = [];
     const userHandle = (user.login || user.github || "").toLowerCase();
     const isAdmin = userHandle === "debasmitabose0";
 
-    // 1. Leadership Badge (Only for Project Lead)
     if (isAdmin) {
       badges.push({
         role: "Project Admin & Lead",
@@ -274,90 +264,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // 2. Dedicated Game Developer Tier
     const gamesCount = user.gamesCount || 0;
-    if (gamesCount >= 100) {
-      badges.push({
-        role: "Arcade Omnipresent Primordial",
-        tagClass: "role-omnipresent-primordial",
-        label: "Arcade Omnipresent Primordial",
-        lucideIcon: "crown",
-        category: "Games Dedicated",
-        requirement: "Requires 100+ Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 75) {
-      badges.push({
-        role: "Celestial Game Deity",
-        tagClass: "role-celestial-deity",
-        label: "Celestial Game Deity",
-        lucideIcon: "sparkles",
-        category: "Games Dedicated",
-        requirement: "Requires 75–99 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 55) {
-      badges.push({
-        role: "Mythic Overlord Architect",
-        tagClass: "role-mythic-overlord",
-        label: "Mythic Overlord Architect",
-        lucideIcon: "zap",
-        category: "Games Dedicated",
-        requirement: "Requires 55–74 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 40) {
-      badges.push({
-        role: "Legendary Game Architect",
-        tagClass: "role-legendary-architect",
-        label: "Legendary Game Architect",
-        lucideIcon: "crown",
-        category: "Games Dedicated",
-        requirement: "Requires 40–54 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 25) {
-      badges.push({
-        role: "Grandmaster Game Designer",
-        tagClass: "role-grandmaster-designer",
-        label: "Grandmaster Game Designer",
-        lucideIcon: "award",
-        category: "Games Dedicated",
-        requirement: "Requires 25–39 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 15) {
-      badges.push({
-        role: "Master Game Architect",
-        tagClass: "role-master-architect",
-        label: "Master Game Architect",
-        lucideIcon: "shield-check",
-        category: "Games Dedicated",
-        requirement: "Requires 15–24 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 10) {
-      badges.push({
-        role: "Veteran Game Developer",
-        tagClass: "role-veteran-dev",
-        label: "Veteran Game Developer",
-        lucideIcon: "rocket",
-        category: "Games Dedicated",
-        requirement: "Requires 10–14 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 7) {
-      badges.push({
-        role: "Hyper Game Developer",
-        tagClass: "role-hyper",
-        label: "Hyper Game Developer",
-        lucideIcon: "flame",
-        category: "Games Dedicated",
-        requirement: "Requires 7–9 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 5) {
-      badges.push({
-        role: "Senior Arcade Developer",
-        tagClass: "role-senior-arcade",
-        label: "Senior Arcade Developer",
-        lucideIcon: "cpu",
-        category: "Games Dedicated",
-        requirement: "Requires 5–6 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 3) {
+    if (gamesCount >= 3) {
       badges.push({
         role: "Arcade Developer",
         tagClass: "role-arcade",
@@ -365,15 +273,6 @@ document.addEventListener("DOMContentLoaded", () => {
         lucideIcon: "gamepad-2",
         category: "Games Dedicated",
         requirement: "Requires 3–4 Verified Games in 'games/' folder",
-      });
-    } else if (gamesCount >= 2) {
-      badges.push({
-        role: "Junior Game Crafter",
-        tagClass: "role-junior-crafter",
-        label: "Junior Game Crafter",
-        lucideIcon: "hammer",
-        category: "Games Dedicated",
-        requirement: "Requires 2 Verified Games in 'games/' folder",
       });
     } else if (gamesCount >= 1) {
       badges.push({
@@ -386,64 +285,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // 3. Platform & Universal Engineering Track
     const score = calculateScore(user);
-
-    if (score >= 15000) {
-      badges.push({
-        role: "Singularity Sovereign Architect",
-        tagClass: "role-singularity-sovereign",
-        label: "Singularity Sovereign Architect",
-        lucideIcon: "crown",
-        category: "Platform & Core",
-        requirement: "Requires 15,000+ Arcade Points",
-      });
-    } else if (score >= 10000) {
-      badges.push({
-        role: "Apex Core Pioneer",
-        tagClass: "role-apex-core",
-        label: "Apex Core Pioneer",
-        lucideIcon: "gem",
-        category: "Platform & Core",
-        requirement: "Requires 10,000–14,999 Arcade Points",
-      });
-    } else if (score >= 7500) {
-      badges.push({
-        role: "Immortal Arcade Legend",
-        tagClass: "role-immortal",
-        label: "Immortal Arcade Legend",
-        lucideIcon: "sparkles",
-        category: "Platform & Core",
-        requirement: "Requires 7,500–9,999 Arcade Points",
-      });
-    } else if (score >= 5000) {
-      badges.push({
-        role: "Grandmaster Core Architect",
-        tagClass: "role-grandmaster-core",
-        label: "Grandmaster Core Architect",
-        lucideIcon: "award",
-        category: "Platform & Core",
-        requirement: "Requires 5,000–7,499 Arcade Points",
-      });
-    } else if (score >= 3000) {
-      badges.push({
-        role: "Master Core Architect",
-        tagClass: "role-master",
-        label: "Master Core Architect",
-        lucideIcon: "shield-check",
-        category: "Platform & Core",
-        requirement: "Requires 3,000–4,999 Arcade Points",
-      });
-    } else if (score >= 1800) {
-      badges.push({
-        role: "Senior Platform Engineer",
-        tagClass: "role-senior-platform",
-        label: "Senior Platform Engineer",
-        lucideIcon: "terminal",
-        category: "Platform & Core",
-        requirement: "Requires 1,800–2,999 Arcade Points",
-      });
-    } else if (score >= 1000) {
+    if (score >= 1000) {
       badges.push({
         role: "Elite Contributor",
         tagClass: "role-elite",
@@ -451,24 +294,6 @@ document.addEventListener("DOMContentLoaded", () => {
         lucideIcon: "zap",
         category: "Platform & Core",
         requirement: "Requires 1,000–1,799 Arcade Points",
-      });
-    } else if (score >= 500) {
-      badges.push({
-        role: "Distinguished Contributor",
-        tagClass: "role-distinguished",
-        label: "Distinguished Contributor",
-        lucideIcon: "medal",
-        category: "Platform & Core",
-        requirement: "Requires 500–999 Arcade Points",
-      });
-    } else if (score >= 250) {
-      badges.push({
-        role: "Platform Contributor",
-        tagClass: "role-platform",
-        label: "Platform Contributor",
-        lucideIcon: "code-2",
-        category: "Platform & Core",
-        requirement: "Requires 250–499 Arcade Points",
       });
     } else if (score >= 100) {
       badges.push({
@@ -479,29 +304,7 @@ document.addEventListener("DOMContentLoaded", () => {
         category: "Getting Started",
         requirement: "Requires 100–249 Arcade Points",
       });
-    } else if (score >= 25) {
-      badges.push({
-        role: "Active Contributor",
-        tagClass: "role-active",
-        label: "Active Contributor",
-        lucideIcon: "sprout",
-        category: "Getting Started",
-        requirement: "Requires 25–99 Arcade Points",
-      });
-    } else if (score >= 1) {
-      badges.push({
-        role: "Apprentice Contributor",
-        tagClass: "role-apprentice",
-        label: "Apprentice Contributor",
-        lucideIcon: "target",
-        category: "Getting Started",
-        requirement: "Requires 1–24 Arcade Points",
-      });
     }
-
-    badges.forEach((b) => {
-      b.title = `${b.label}: ${b.requirement || b.category}`;
-    });
 
     return badges;
   }
@@ -525,21 +328,11 @@ document.addEventListener("DOMContentLoaded", () => {
           item.login.toLowerCase() !== "debasmitabose0" &&
           !isBotAccount(item.login),
       )
-      .sort((a, b) => {
-        const scoreDiff = calculateScore(b) - calculateScore(a);
-        if (scoreDiff !== 0) return scoreDiff;
-        if ((b.gamesCount || 0) !== (a.gamesCount || 0)) {
-          return (b.gamesCount || 0) - (a.gamesCount || 0);
-        }
-        return (b.commits || 0) - (a.commits || 0);
-      });
+      .sort((a, b) => calculateScore(b) - calculateScore(a));
   }
 
   function getWorkBreakdown(item) {
-    const games = item.gamesCount || 0;
-    const feat = item.platformPRs || 0;
-    const fix = item.qualityPRs || 0;
-    return `Games: ${games} • Feat: ${feat} • Fix: ${fix}`;
+    return `Games: ${item.gamesCount || 0} • Feat: ${item.platformPRs || 0} • Fix: ${item.qualityPRs || 0}`;
   }
 
   function getFallbackAvatarSvg(name, login) {
@@ -548,231 +341,264 @@ document.addEventListener("DOMContentLoaded", () => {
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   }
 
-  function renderPodium() {
-    if (!podiumContainer) return;
-    podiumContainer.innerHTML = "";
+  // Floating Compare Bar Setup
+  const floatingCompareBar = document.createElement("div");
+  floatingCompareBar.className = "compare-floating-bar";
+  floatingCompareBar.innerHTML = `
+    <span class="compare-floating-text" id="compare-count-text">0 selected for Versus comparison</span>
+    <button type="button" class="compare-action-btn" id="launch-versus-btn">
+      <i data-lucide="swords" style="width: 14px; height: 14px;"></i> Compare Versus
+    </button>
+    <button type="button" class="compare-clear-btn" id="clear-compare-btn">Clear</button>
+  `;
+  document.body.appendChild(floatingCompareBar);
 
-    const communityContributors = getCommunityContributors();
+  const launchVersusBtn = document.getElementById("launch-versus-btn");
+  const clearCompareBtn = document.getElementById("clear-compare-btn");
+  const compareCountText = document.getElementById("compare-count-text");
 
-    if (communityContributors.length === 0) {
-      podiumContainer.innerHTML = `
-        <div class="podium-empty-notice" style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.95rem;">
-          <i data-lucide="sparkles" style="margin-right: 0.4rem;"></i> Verified community contributors will appear here automatically as contributions merge.
-        </div>
-      `;
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
-
-    let orderedContributors = [];
-
-    if (communityContributors.length === 1) {
-      orderedContributors = [
-        {
-          rank: 1,
-          user: communityContributors[0],
-          cardClass: "podium-1 podium-gold solo-podium",
-          badgeType: "gold",
-          badgeLabel: "1st Champion",
-          badgeIcon: "crown",
-        },
-      ];
-    } else if (communityContributors.length === 2) {
-      orderedContributors = [
-        {
-          rank: 1,
-          user: communityContributors[0],
-          cardClass: "podium-1 podium-gold",
-          badgeType: "gold",
-          badgeLabel: "1st Champion",
-          badgeIcon: "crown",
-        },
-        {
-          rank: 2,
-          user: communityContributors[1],
-          cardClass: "podium-2 podium-silver",
-          badgeType: "silver",
-          badgeLabel: "2nd Contributor",
-          badgeIcon: "medal",
-        },
-      ];
+  function updateCompareFloatingBar() {
+    const count = selectedCompareLogins.length;
+    if (count > 0) {
+      floatingCompareBar.classList.add("visible");
+      compareCountText.textContent = `${count}/2 contributor${count > 1 ? "s" : ""} selected`;
+      if (count === 2) {
+        launchVersusBtn.style.opacity = "1";
+        launchVersusBtn.removeAttribute("disabled");
+      } else {
+        launchVersusBtn.style.opacity = "0.7";
+      }
     } else {
-      orderedContributors = [
-        {
-          rank: 2,
-          user: communityContributors[1],
-          cardClass: "podium-2 podium-silver",
-          badgeType: "silver",
-          badgeLabel: "2nd Contributor",
-          badgeIcon: "medal",
-        },
-        {
-          rank: 1,
-          user: communityContributors[0],
-          cardClass: "podium-1 podium-gold",
-          badgeType: "gold",
-          badgeLabel: "1st Champion",
-          badgeIcon: "crown",
-        },
-        {
-          rank: 3,
-          user: communityContributors[2],
-          cardClass: "podium-3 podium-bronze",
-          badgeType: "bronze",
-          badgeLabel: "3rd Contributor",
-          badgeIcon: "medal",
-        },
-      ];
+      floatingCompareBar.classList.remove("visible");
     }
+    if (window.lucide) lucide.createIcons();
+  }
 
-    orderedContributors.forEach((slot) => {
-      const item = slot.user;
-      const score = calculateScore(item);
-      const badges = getContributorBadges(item);
-      const fallbackAvatar = getFallbackAvatarSvg(item.name, item.login);
+  if (clearCompareBtn) {
+    clearCompareBtn.addEventListener("click", () => {
+      selectedCompareLogins = [];
+      document
+        .querySelectorAll(".compare-checkbox")
+        .forEach((cb) => (cb.checked = false));
+      updateCompareFloatingBar();
+    });
+  }
 
-      const card = document.createElement("div");
-      card.className = `podium-card ${slot.cardClass}`;
-      card.innerHTML = `
-        <div class="podium-badge podium-badge-${slot.badgeType}">
-          <i data-lucide="${slot.badgeIcon}"></i> ${slot.badgeLabel}
-        </div>
-        <img src="${item.avatar_url || fallbackAvatar}" alt="${item.name}" class="podium-avatar" onerror="this.onerror=null; this.src='${fallbackAvatar}';">
-        <h3 class="podium-name">${item.name}</h3>
-        <a href="https://github.com/${item.login}" target="_blank" rel="noopener noreferrer" class="podium-handle">@${item.login}</a>
-        
-        <div class="podium-badges-container">
-          ${badges.map(renderBadgeHtml).join("")}
-        </div>
+  if (launchVersusBtn) {
+    launchVersusBtn.addEventListener("click", () => {
+      if (selectedCompareLogins.length === 2) {
+        openVersusModal(selectedCompareLogins[0], selectedCompareLogins[1]);
+      }
+    });
+  }
 
-        <div class="podium-score-pill">
-          <strong>${score}</strong> pts
-        </div>
-        <div class="podium-sub-stat-text" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
-          ${item.gamesCount > 0 ? `<span><i data-lucide="gamepad-2" style="width: 0.8rem; height: 0.8rem;"></i> ${item.gamesCount} Game${item.gamesCount === 1 ? "" : "s"}</span> • ` : ""}
-          <span><i data-lucide="git-commit" style="width: 0.8rem; height: 0.8rem;"></i> ${item.commits} Commit${item.commits === 1 ? "" : "s"}</span>
-        </div>
+  function handleCompareCheckboxChange(login, isChecked) {
+    if (isChecked) {
+      if (selectedCompareLogins.length >= 2) {
+        const removedLogin = selectedCompareLogins.shift();
+        const oldCheckbox = document.querySelector(
+          `.compare-checkbox[data-login="${removedLogin}"]`,
+        );
+        if (oldCheckbox) oldCheckbox.checked = false;
+      }
+      selectedCompareLogins.push(login);
+    } else {
+      selectedCompareLogins = selectedCompareLogins.filter((l) => l !== login);
+    }
+    updateCompareFloatingBar();
+  }
 
-        <div class="podium-actions-row">
-          <button type="button" class="podium-trophy-btn" data-action="open-trophy-card" data-player="${escapeAttr(item.name || item.login)}" data-handle="${escapeAttr(item.login)}" data-avatar="${escapeAttr(item.avatar_url || "")}" data-score="${score} PTS" data-game="NSOC 2026 Hall of Fame" data-rank="${escapeAttr(slot.badgeLabel)}" data-badge="NSOC 2026" title="Generate Verified Achievement Certificate">
-            <i data-lucide="award"></i> Trophy Certificate
+  function openVersusModal(login1, login2) {
+    const p1 = contributorsData.find(
+      (c) => c.login.toLowerCase() === login1.toLowerCase(),
+    );
+    const p2 = contributorsData.find(
+      (c) => c.login.toLowerCase() === login2.toLowerCase(),
+    );
+    if (!p1 || !p2) return;
+
+    const score1 = calculateScore(p1);
+    const score2 = calculateScore(p2);
+    const badges1 = getContributorBadges(p1);
+    const badges2 = getContributorBadges(p2);
+    const fallbackAvatar1 = getFallbackAvatarSvg(p1.name, p1.login);
+    const fallbackAvatar2 = getFallbackAvatarSvg(p2.name, p2.login);
+
+    const maxScore = Math.max(score1, score2, 100);
+    const maxGames = Math.max(p1.gamesCount || 0, p2.gamesCount || 0, 5);
+    const maxCommits = Math.max(p1.commits || 0, p2.commits || 0, 10);
+
+    const overlay = document.createElement("div");
+    overlay.className = "versus-modal-overlay";
+    overlay.innerHTML = `
+      <div class="badge-legend-backdrop" id="versus-backdrop"></div>
+      <div class="versus-modal-window">
+        <div class="versus-modal-header">
+          <h2><i data-lucide="swords"></i> Head-to-Head Versus Comparison</h2>
+          <button type="button" class="badge-legend-close-btn" id="close-versus-btn" aria-label="Close">
+            <i data-lucide="x"></i>
           </button>
         </div>
-      `;
+        <div class="versus-modal-body">
+          <div class="versus-players-header">
+            <div class="versus-player-card">
+              <img src="${p1.avatar_url || fallbackAvatar1}" alt="${p1.name}" class="versus-avatar">
+              <h3 class="versus-name">${p1.name}</h3>
+              <a href="https://github.com/${p1.login}" target="_blank" class="versus-handle">@${p1.login}</a>
+            </div>
+            <div class="versus-vs-badge">VS</div>
+            <div class="versus-player-card">
+              <img src="${p2.avatar_url || fallbackAvatar2}" alt="${p2.name}" class="versus-avatar">
+              <h3 class="versus-name">${p2.name}</h3>
+              <a href="https://github.com/${p2.login}" target="_blank" class="versus-handle">@${p2.login}</a>
+            </div>
+          </div>
 
-      podiumContainer.appendChild(card);
-    });
+          <div class="versus-stats-grid">
+            <div class="versus-stat-row">
+              <div class="versus-stat-meta">
+                <span>${score1} pts</span>
+                <span class="versus-stat-label">Total Arcade Points</span>
+                <span>${score2} pts</span>
+              </div>
+              <div class="versus-bars-container">
+                <div class="versus-bar-wrap player-1">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p1" style="width: ${(score1 / maxScore) * 100}%;"></div></div>
+                </div>
+                <div class="versus-bar-wrap player-2">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p2" style="width: ${(score2 / maxScore) * 100}%;"></div></div>
+                </div>
+              </div>
+            </div>
 
-    if (window.lucide) {
-      lucide.createIcons();
+            <div class="versus-stat-row">
+              <div class="versus-stat-meta">
+                <span>${p1.gamesCount || 0} Games</span>
+                <span class="versus-stat-label">Verified Standalone Games</span>
+                <span>${p2.gamesCount || 0} Games</span>
+              </div>
+              <div class="versus-bars-container">
+                <div class="versus-bar-wrap player-1">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p1" style="width: ${((p1.gamesCount || 0) / maxGames) * 100}%;"></div></div>
+                </div>
+                <div class="versus-bar-wrap player-2">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p2" style="width: ${((p2.gamesCount || 0) / maxGames) * 100}%;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="versus-stat-row">
+              <div class="versus-stat-meta">
+                <span>${p1.commits || 0} Commits</span>
+                <span class="versus-stat-label">Commits</span>
+                <span>${p2.commits || 0} Commits</span>
+              </div>
+              <div class="versus-bars-container">
+                <div class="versus-bar-wrap player-1">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p1" style="width: ${((p1.commits || 0) / maxCommits) * 100}%;"></div></div>
+                </div>
+                <div class="versus-bar-wrap player-2">
+                  <div class="versus-bar-track"><div class="versus-bar-fill p2" style="width: ${((p2.commits || 0) / maxCommits) * 100}%;"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    if (window.lucide) lucide.createIcons();
+
+    const closeBtn = overlay.querySelector("#close-versus-btn");
+    const backdrop = overlay.querySelector("#versus-backdrop");
+    const close = () => overlay.remove();
+    if (closeBtn) closeBtn.addEventListener("click", close);
+    if (backdrop) backdrop.addEventListener("click", close);
+  }
+
+  function matchesRoleFilter(item) {
+    if (currentRoleFilter === "all") return true;
+
+    const normalize = (value) => (value || "").trim().toLowerCase();
+    const contributorRole = normalize(item.role);
+    const games = (item.games || []).filter(
+      (game) => typeof game === "object" && game !== null,
+    );
+
+    if (currentRoleFilter === "arcade") {
+      return (
+        /^arcade developer(?:\b|$)/.test(contributorRole) ||
+        games.some((game) => {
+          const category = normalize(game.category);
+          const gameRole = normalize(game.role);
+          const tags = Array.isArray(game.tags)
+            ? game.tags.map(normalize)
+            : [];
+          return (
+            /^arcade developer(?:\b|$)/.test(gameRole) ||
+            category.split(/\s*\/\s*/).includes("arcade") ||
+            tags.includes("arcade")
+          );
+        })
+      );
     }
+
+    if (currentRoleFilter === "puzzle") {
+      return (
+        /^puzzle developer(?:\b|$)/.test(contributorRole) ||
+        games.some((game) => {
+          const category = normalize(game.category);
+          const gameRole = normalize(game.role);
+          const tags = Array.isArray(game.tags)
+            ? game.tags.map(normalize)
+            : [];
+          return (
+            /^puzzle developer(?:\b|$)/.test(gameRole) ||
+            category.split(/\s*\/\s*/).includes("puzzle") ||
+            tags.includes("puzzle")
+          );
+        })
+      );
+    }
+
+    if (currentRoleFilter === "platform") {
+      return (
+        /^(?:project admin\b|.*\b(?:platform|architect)\b)/.test(
+          contributorRole,
+        ) ||
+        (item.platformPRs || 0) > 0
+      );
+    }
+
+    return true;
   }
 
   function renderTable() {
     if (!tableBody) return;
     tableBody.innerHTML = "";
     const allCommunityContributors = getCommunityContributors().map(
-      (item, idx) => {
-        return {
-          ...item,
-          rank: idx + 1,
-        };
-      },
+      (item, idx) => ({ ...item, rank: idx + 1 }),
     );
 
     const communityContributors = allCommunityContributors.filter((item) => {
-      // Role Filter Check
-      if (currentRoleFilter !== "all") {
-        const itemGames = (item.games || []).map((g) =>
-          typeof g === "string"
-            ? g.toLowerCase()
-            : (g.title || "").toLowerCase(),
-        );
-        const itemRole = (item.role || "").toLowerCase();
+      if (!matchesRoleFilter(item)) return false;
 
-        if (currentRoleFilter === "arcade") {
-          const isArcade =
-            itemGames.some(
-              (g) =>
-                g.includes("arcade") ||
-                g.includes("pong") ||
-                g.includes("surge") ||
-                g.includes("game") ||
-                g.includes("platformer"),
-            ) || itemRole.includes("arcade");
-          if (!isArcade && (item.gamesCount || 0) < 1) return false;
-        } else if (currentRoleFilter === "puzzle") {
-          const isPuzzle =
-            itemGames.some(
-              (g) =>
-                g.includes("puzzle") ||
-                g.includes("matrix") ||
-                g.includes("memory"),
-            ) || itemRole.includes("puzzle");
-          if (!isPuzzle) return false;
-        } else if (currentRoleFilter === "platform") {
-          const isPlatform =
-            itemRole.includes("platform") ||
-            itemRole.includes("architect") ||
-            (item.platformPRs || 0) > 0 ||
-            (item.commits || 0) > 20;
-          if (!isPlatform) return false;
-        }
-      }
-
-      // Search Query Check
       if (!tableSearchQuery) return true;
       const q = tableSearchQuery;
-      const nameMatch = (item.name || "").toLowerCase().includes(q);
-      const loginMatch = (item.login || "").toLowerCase().includes(q);
-      const roleMatch = (item.role || "").toLowerCase().includes(q);
-      const badges = getContributorBadges(item);
-      const badgeMatch = badges.some((b) =>
-        (b.label || "").toLowerCase().includes(q),
+      return (
+        (item.name || "").toLowerCase().includes(q) ||
+        (item.login || "").toLowerCase().includes(q) ||
+        (item.role || "").toLowerCase().includes(q)
       );
-      return nameMatch || loginMatch || roleMatch || badgeMatch;
     });
 
     const totalItems = communityContributors.length;
-
     if (totalItems === 0) {
       if (paginationBar) paginationBar.style.display = "none";
       const emptyTr = document.createElement("tr");
-      if (
-        (tableSearchQuery || currentRoleFilter !== "all") &&
-        allCommunityContributors.length > 0
-      ) {
-        emptyTr.innerHTML = `
-          <td colspan="9" style="text-align: center; padding: 2.2rem; color: var(--text-muted);">
-            <div style="font-size: 1.05rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
-              No contributors found matching current filters.
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="reset-table-search-btn">
-              <span><i data-lucide="rotate-ccw"></i> Reset Filters</span>
-            </button>
-          </td>
-        `;
-        tableBody.appendChild(emptyTr);
-        const resetBtn = emptyTr.querySelector("#reset-table-search-btn");
-        if (resetBtn) {
-          resetBtn.addEventListener("click", () => {
-            tableSearchQuery = "";
-            currentRoleFilter = "all";
-            if (searchInput) searchInput.value = "";
-            if (roleFilterSelect) roleFilterSelect.value = "all";
-            renderTable();
-          });
-        }
-        if (window.lucide) lucide.createIcons();
-        return;
-      }
-      emptyTr.innerHTML = `
-        <td colspan="9" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
-          <i data-lucide="sparkles" style="margin-right: 0.4rem;"></i> Awaiting first community PR merges! Be the first contributor to claim Rank #1.
-        </td>
-      `;
+      emptyTr.innerHTML = `<td colspan="10" style="text-align: center; padding: 2.2rem; color: var(--text-muted);">No contributors found matching current filters.</td>`;
       tableBody.appendChild(emptyTr);
-      if (window.lucide) lucide.createIcons();
       return;
     }
 
@@ -785,35 +611,39 @@ document.addEventListener("DOMContentLoaded", () => {
       const limit = typeof pageSize === "number" ? pageSize : 10;
       totalPages = Math.max(1, Math.ceil(totalItems / limit));
       if (currentPage > totalPages) currentPage = totalPages;
-      if (currentPage < 1) currentPage = 1;
-
       startIdx = (currentPage - 1) * limit;
       endIdx = Math.min(startIdx + limit, totalItems);
       itemsToRender = communityContributors.slice(startIdx, endIdx);
-    } else {
-      currentPage = 1;
-      totalPages = 1;
     }
     currentTotalPages = totalPages;
+
+    const tableHeaderRow = document.querySelector(
+      "#leaderboard-table thead tr",
+    );
+    if (tableHeaderRow && !tableHeaderRow.querySelector(".th-compare")) {
+      const thCompare = document.createElement("th");
+      thCompare.className = "th-compare";
+      thCompare.style.width = "45px";
+      thCompare.style.textAlign = "center";
+      thCompare.textContent = "Compare";
+      tableHeaderRow.insertBefore(thCompare, tableHeaderRow.firstChild);
+    }
 
     itemsToRender.forEach((item) => {
       const rank = item.rank;
       const score = calculateScore(item);
       const badges = getContributorBadges(item);
       const fallbackAvatar = getFallbackAvatarSvg(item.name, item.login);
-
-      let rankBadgeHtml = `<span class="rank-tag">#${rank}</span>`;
-      if (rank === 1) {
-        rankBadgeHtml = `<span class="rank-tag rank-1"><i data-lucide="trophy"></i> #1</span>`;
-      } else if (rank === 2) {
-        rankBadgeHtml = `<span class="rank-tag rank-2"><i data-lucide="medal"></i> #2</span>`;
-      } else if (rank === 3) {
-        rankBadgeHtml = `<span class="rank-tag rank-3"><i data-lucide="medal"></i> #3</span>`;
-      }
+      const isChecked = selectedCompareLogins.includes(item.login);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td>${rankBadgeHtml}</td>
+        <td style="text-align: center;">
+          <div class="compare-checkbox-wrap">
+            <input type="checkbox" class="compare-checkbox" data-login="${escapeAttr(item.login)}" ${isChecked ? "checked" : ""} aria-label="Compare ${escapeAttr(item.name)}">
+          </div>
+        </td>
+        <td><span class="rank-tag">#${rank}</span></td>
         <td>
           <div class="table-user-cell">
             <img src="${item.avatar_url || fallbackAvatar}" alt="${item.name}" class="table-user-avatar" onerror="this.onerror=null; this.src='${fallbackAvatar}';">
@@ -823,671 +653,30 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           </div>
         </td>
-        <td>
-          <div class="contributor-badges-wrap">
-            ${badges.map(renderBadgeHtml).join("")}
-          </div>
-        </td>
-        <td>
-          <a href="https://github.com/${item.login}" target="_blank" class="github-handle-link">@${highlightMatch(item.login, tableSearchQuery)}</a>
-        </td>
+        <td><div class="contributor-badges-wrap">${badges.map(renderBadgeHtml).join("")}</div></td>
+        <td><a href="https://github.com/${item.login}" target="_blank" class="github-handle-link">@${highlightMatch(item.login, tableSearchQuery)}</a></td>
+        <td style="text-align: center;"><span class="games-count-pill"><i data-lucide="gamepad-2"></i> ${item.gamesCount}</span></td>
+        <td style="text-align: center;"><span class="files-count-pill"><i data-lucide="git-pull-request"></i> ${getWorkBreakdown(item)}</span></td>
+        <td style="text-align: center;"><span class="commits-count-pill"><i data-lucide="git-commit"></i> ${item.commits}</span></td>
         <td style="text-align: center;">
-          <span class="games-count-pill" title="${(item.games || []).join(", ")}"><i data-lucide="gamepad-2"></i> ${item.gamesCount}</span>
+          <a href="https://github.com/DebasmitaBose0/ArcadeVerse/pulls?q=author%3A${item.login}" target="_blank" class="activity-link-btn"><i data-lucide="git-pull-request"></i> PRs</a>
         </td>
-        <td style="text-align: center;">
-          <span class="files-count-pill" title="Universal Score"><i data-lucide="git-pull-request"></i> ${getWorkBreakdown(item)}</span>
-        </td>
-        <td style="text-align: center;">
-          <span class="commits-count-pill"><i data-lucide="git-commit"></i> ${item.commits}</span>
-        </td>
-        <td style="text-align: center;">
-          <div class="activity-links-group">
-            <a href="https://github.com/DebasmitaBose0/ArcadeVerse/issues?q=author%3A${item.login}" target="_blank" rel="noopener noreferrer" class="activity-link-btn" title="View Issues authored by @${item.login}">
-              <i data-lucide="circle-dot"></i> Issues
-            </a>
-            <a href="https://github.com/DebasmitaBose0/ArcadeVerse/pulls?q=author%3A${item.login}" target="_blank" rel="noopener noreferrer" class="activity-link-btn" title="View Pull Requests by @${item.login}">
-              <i data-lucide="git-pull-request"></i> PRs
-            </a>
-            <button type="button" class="activity-link-btn table-trophy-btn" data-action="open-trophy-card" data-player="${escapeAttr(item.name || item.login)}" data-handle="${escapeAttr(item.login)}" data-avatar="${escapeAttr(item.avatar_url || "")}" data-score="${score} PTS" data-game="Contributor Milestone" data-rank="#${rank} Contributor" data-badge="NSOC 2026" title="Generate Verified Achievement Certificate">
-              <i data-lucide="award"></i> Certificate
-            </button>
-          </div>
-        </td>
-        <td style="text-align: right;">
-          <strong class="score-highlight">${score} pts</strong>
-        </td>
+        <td style="text-align: right;"><strong class="score-highlight">${score} pts</strong></td>
       `;
+
+      const checkbox = tr.querySelector(".compare-checkbox");
+      if (checkbox) {
+        checkbox.addEventListener("change", (e) =>
+          handleCompareCheckboxChange(item.login, e.target.checked),
+        );
+      }
+
       tableBody.appendChild(tr);
     });
 
-    renderPaginationUI(totalItems, totalPages, startIdx, endIdx);
-
-    if (window.lucide) {
-      lucide.createIcons();
-    }
-  }
-
-  function renderPaginationUI(totalItems, totalPages, startIdx, endIdx) {
-    if (!paginationBar) return;
-    paginationBar.style.display = "flex";
-
-    if (paginationInfo) {
-      if (pageSize === "all") {
-        paginationInfo.textContent = `Showing all ${totalItems} contributor${totalItems !== 1 ? "s" : ""}`;
-      } else {
-        paginationInfo.textContent = `Showing ${startIdx + 1}–${endIdx} of ${totalItems} contributor${totalItems !== 1 ? "s" : ""}`;
-      }
-    }
-
-    if (prevBtn) {
-      prevBtn.disabled = currentPage <= 1;
-    }
-    if (nextBtn) {
-      nextBtn.disabled = currentPage >= totalPages;
-    }
-
-    if (pagesContainer) {
-      pagesContainer.innerHTML = "";
-
-      if (totalPages <= 1) {
-        const singleBtn = document.createElement("button");
-        singleBtn.type = "button";
-        singleBtn.className = "pagination-page-btn active";
-        singleBtn.textContent = "1";
-        singleBtn.disabled = true;
-        pagesContainer.appendChild(singleBtn);
-        return;
-      }
-
-      const pageList = getPageNumbers(currentPage, totalPages);
-      pageList.forEach((p) => {
-        if (p === "...") {
-          const ellipsis = document.createElement("span");
-          ellipsis.className = "pagination-ellipsis";
-          ellipsis.textContent = "...";
-          pagesContainer.appendChild(ellipsis);
-        } else {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = `pagination-page-btn ${p === currentPage ? "active" : ""}`;
-          btn.textContent = p;
-          btn.setAttribute("aria-label", `Page ${p}`);
-          if (p === currentPage) {
-            btn.setAttribute("aria-current", "page");
-          }
-          btn.addEventListener("click", () => {
-            if (currentPage !== p) {
-              currentPage = p;
-              renderTable();
-              scrollToTable();
-            }
-          });
-          pagesContainer.appendChild(btn);
-        }
-      });
-    }
-  }
-
-  function updateAdminSpotlight(adminUser) {
-    if (!adminUser || !adminMetaInfo) return;
-    if (
-      typeof GAMES_REGISTRY !== "undefined" &&
-      Array.isArray(GAMES_REGISTRY)
-    ) {
-      const userGames = GAMES_REGISTRY.filter(
-        (g) => g.github && g.github.toLowerCase() === "debasmitabose0",
-      );
-      if (userGames.length > 0) {
-        adminUser.gamesCount = userGames.length;
-        adminUser.games = userGames.map((g) => g.title);
-      }
-    }
-    const score = calculateScore(adminUser);
-    adminMetaInfo.textContent = `${adminUser.commits} Commits • ${adminUser.gamesCount} Games • ${score} pts`;
-
-    const adminTrophyBtn = document.querySelector(
-      '.admin-stats-badge [data-action="open-trophy-card"]',
-    );
-    if (adminTrophyBtn) {
-      adminTrophyBtn.dataset.avatar =
-        adminUser.avatar_url ||
-        "https://avatars.githubusercontent.com/u/144198639?v=4";
-      adminTrophyBtn.dataset.handle = adminUser.login || "DebasmitaBose0";
-      adminTrophyBtn.dataset.player = adminUser.name || "Debasmita Bose";
-      adminTrophyBtn.dataset.score = `${score} PTS`;
-      adminTrophyBtn.dataset.rank = "Project Lead & Core Architect";
-      adminTrophyBtn.dataset.game = "Core Platform & Quantum Matrix";
-    }
-
-    const adminBadgesContainer = document.getElementById("admin-badges-row");
-    if (adminBadgesContainer) {
-      const badges = getContributorBadges(adminUser);
-      adminBadgesContainer.innerHTML = badges.map(renderBadgeHtml).join("");
-      if (window.lucide) {
-        lucide.createIcons();
-      }
-    }
-  }
-
-  function resolveDisplayName(login) {
-    if (!login) return "Contributor";
-    const lower = login.toLowerCase();
-
-    if (
-      typeof CONTRIBUTORS_REGISTRY !== "undefined" &&
-      Array.isArray(CONTRIBUTORS_REGISTRY)
-    ) {
-      const match = CONTRIBUTORS_REGISTRY.find(
-        (c) => c.github && c.github.toLowerCase() === lower,
-      );
-      if (match && match.name) return match.name;
-    }
-
-    if (
-      typeof GAMES_REGISTRY !== "undefined" &&
-      Array.isArray(GAMES_REGISTRY)
-    ) {
-      const match = GAMES_REGISTRY.find(
-        (g) => g.github && g.github.toLowerCase() === lower,
-      );
-      if (match && match.author) return match.author;
-    }
-
-    return login;
-  }
-
-  async function fetchLiveGitHubContributions(
-    repo = "DebasmitaBose0/ArcadeVerse",
-    forceRefresh = false,
-  ) {
-    if (!repo) return;
-
-    if (!forceRefresh) {
-      try {
-        const cachedRaw = localStorage.getItem(`${CACHE_KEY}_${repo}`);
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw);
-          const isFresh = Date.now() - cached.timestamp < CACHE_TTL;
-          if (isFresh && Array.isArray(cached.data) && cached.data.length > 0) {
-            contributorsData = cached.data.map((user) => {
-              if (
-                typeof GAMES_REGISTRY !== "undefined" &&
-                Array.isArray(GAMES_REGISTRY)
-              ) {
-                const uGames = GAMES_REGISTRY.filter(
-                  (g) =>
-                    g.github &&
-                    g.github.toLowerCase() === (user.login || "").toLowerCase(),
-                );
-                if (uGames.length > 0) {
-                  user.gamesCount = uGames.length;
-                  user.games = uGames.map((g) => g.title);
-                }
-              }
-              return user;
-            });
-
-            if (
-              typeof CONTRIBUTORS_REGISTRY !== "undefined" &&
-              Array.isArray(CONTRIBUTORS_REGISTRY)
-            ) {
-              CONTRIBUTORS_REGISTRY.forEach((reg) => {
-                if (
-                  !contributorsData.some(
-                    (c) =>
-                      c.login &&
-                      c.login.toLowerCase() === reg.github.toLowerCase(),
-                  )
-                ) {
-                  contributorsData.push({
-                    login: reg.github,
-                    name: reg.name,
-                    role: reg.role || "Community Contributor",
-                    avatar_url: `https://github.com/${reg.github}.png`,
-                    commits: reg.commits || 1,
-                    gamesCount: reg.gamesCount || 0,
-                    mechanicsBonus: reg.mechanicsBonus || 0,
-                    platformPRs: reg.platformPRs || 0,
-                    qualityPRs: reg.qualityPRs || 0,
-                    bonusPts: reg.bonusPts || 0,
-                    games: reg.contributions || [],
-                  });
-                }
-              });
-            }
-
-            const adminItem = contributorsData.find(
-              (c) => c.login && c.login.toLowerCase() === "debasmitabose0",
-            );
-            if (adminItem) updateAdminSpotlight(adminItem);
-
-            renderPodium();
-            renderTable();
-            if (syncStatusText) {
-              const minutesAgo = Math.floor(
-                (Date.now() - cached.timestamp) / 60000,
-              );
-              syncStatusText.textContent = `Cached GitHub data (${minutesAgo}m ago • ${contributorsData.length} contributors)`;
-            }
-            return;
-          }
-        }
-      } catch (e) {
-        console.warn("Could not read from cache:", e);
-      }
-    }
-
-    if (syncStatusText)
-      syncStatusText.textContent = `Connecting to GitHub API (${repo})...`;
-
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${repo}/contributors`,
-      );
-
-      if (response.status === 403) {
-        throw new Error("RATE_LIMIT");
-      }
-
-      if (!response.ok) {
-        throw new Error(`GitHub returned status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (Array.isArray(data) && data.length > 0) {
-        const validUsers = data.filter(
-          (u) => u.type !== "Bot" && !isBotAccount(u.login),
-        );
-
-        const enrichedContributors = validUsers.map((user) => {
-          const isAdmin = user.login.toLowerCase() === "debasmitabose0";
-
-          let registryEntry = null;
-          if (
-            typeof CONTRIBUTORS_REGISTRY !== "undefined" &&
-            Array.isArray(CONTRIBUTORS_REGISTRY)
-          ) {
-            registryEntry = CONTRIBUTORS_REGISTRY.find(
-              (c) =>
-                c.github && c.github.toLowerCase() === user.login.toLowerCase(),
-            );
-          }
-          const localEntry = contributorsData.find(
-            (c) =>
-              c.login && c.login.toLowerCase() === user.login.toLowerCase(),
-          );
-
-          const displayName = registryEntry
-            ? registryEntry.name
-            : localEntry
-              ? localEntry.name
-              : resolveDisplayName(user.login);
-
-          let userGames = [];
-          if (
-            typeof GAMES_REGISTRY !== "undefined" &&
-            Array.isArray(GAMES_REGISTRY)
-          ) {
-            userGames = GAMES_REGISTRY.filter(
-              (g) =>
-                g.github && g.github.toLowerCase() === user.login.toLowerCase(),
-            );
-          }
-          const gamesCount =
-            userGames.length > 0
-              ? userGames.length
-              : registryEntry
-                ? registryEntry.gamesCount || 0
-                : localEntry
-                  ? localEntry.gamesCount || 0
-                  : isAdmin
-                    ? 3
-                    : 0;
-
-          const mechanicsBonus =
-            registryEntry?.mechanicsBonus ??
-            localEntry?.mechanicsBonus ??
-            (isAdmin ? 2 : 0);
-          const platformPRs =
-            registryEntry?.platformPRs ??
-            localEntry?.platformPRs ??
-            (isAdmin ? 2 : 0);
-          const qualityPRs =
-            registryEntry?.qualityPRs ??
-            localEntry?.qualityPRs ??
-            (isAdmin ? 0 : 1);
-          const bonusPts = registryEntry?.bonusPts ?? localEntry?.bonusPts ?? 0;
-
-          const commits = Math.max(
-            user.contributions || 0,
-            registryEntry?.commits || 0,
-            localEntry?.commits || 0,
-          );
-
-          return {
-            login: user.login,
-            name: displayName,
-            avatar_url: user.avatar_url,
-            commits: commits,
-            gamesCount: gamesCount,
-            mechanicsBonus: mechanicsBonus,
-            platformPRs: platformPRs,
-            qualityPRs: qualityPRs,
-            bonusPts: bonusPts,
-            games:
-              userGames.length > 0
-                ? userGames.map((g) => g.title)
-                : localEntry?.games && localEntry.games.length > 0
-                  ? localEntry.games
-                  : isAdmin
-                    ? [
-                        "Cosmic Surge: Galaxy Defender",
-                        "Cyber Neon Pong",
-                        "Quantum Memory Matrix",
-                      ]
-                    : [],
-          };
-        });
-
-        contributorsData.forEach((c) => {
-          if (
-            !enrichedContributors.some(
-              (ec) => ec.login.toLowerCase() === c.login.toLowerCase(),
-            )
-          ) {
-            enrichedContributors.push(c);
-          }
-        });
-
-        contributorsData = enrichedContributors;
-
-        const cachePayload = JSON.stringify({
-          timestamp: Date.now(),
-          data: enrichedContributors,
-        });
-
-        if (
-          window.ArcadeStorageResilience &&
-          typeof window.ArcadeStorageResilience.safeSetItem === "function"
-        ) {
-          window.ArcadeStorageResilience.safeSetItem(
-            `${CACHE_KEY}_${repo}`,
-            cachePayload,
-          );
-        } else {
-          try {
-            localStorage.setItem(`${CACHE_KEY}_${repo}`, cachePayload);
-          } catch (e) {
-            console.warn("Could not save to cache:", e);
-          }
-        }
-
-        const adminUser = contributorsData.find(
-          (c) => c.login.toLowerCase() === "debasmitabose0",
-        );
-        if (adminUser) updateAdminSpotlight(adminUser);
-
-        const communityCount = contributorsData.filter(
-          (c) =>
-            c.login.toLowerCase() !== "debasmitabose0" &&
-            !isBotAccount(c.login),
-        ).length;
-        if (syncStatusText)
-          syncStatusText.textContent = `GitHub Live Sync: 1 Admin Lead • ${communityCount} Community Contributor(s) active`;
-      }
-    } catch (err) {
-      console.warn("GitHub API notice:", err.message);
-      if (syncStatusText) {
-        syncStatusText.innerHTML =
-          err.message === "RATE_LIMIT"
-            ? `<i data-lucide="alert-triangle" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; color: #f59e0b;"></i> GitHub API rate limit reached (60/hr). Showing cached/local data.`
-            : `Offline/Cached state: ${repo} (Rate limit safe)`;
-        if (window.lucide) lucide.createIcons();
-      }
-    }
-
-    renderPodium();
-    renderTable();
-  }
-
-  function detectRepo() {
-    if (
-      repoInput &&
-      repoInput.value.trim() &&
-      repoInput.value.trim() !== "DebasmitaBose0/ArcadeVerse"
-    ) {
-      return repoInput.value.trim();
-    }
-    if (typeof window !== "undefined" && window.location) {
-      if (window.location.hostname.endsWith(".github.io")) {
-        const owner = window.location.hostname.split(".")[0];
-        const pathSegments = window.location.pathname
-          .split("/")
-          .filter(Boolean);
-        const repoName =
-          pathSegments.length > 0 ? pathSegments[0] : "ArcadeVerse";
-        return `${owner}/${repoName}`;
-      }
-    }
-    return repoInput ? repoInput.value.trim() : "DebasmitaBose0/ArcadeVerse";
-  }
-
-  function exportStandingsCsv() {
-    const list = getCommunityContributors();
-    if (!list || list.length === 0) return;
-
-    const headers = [
-      "Rank",
-      "Contributor",
-      "GitHub Handle",
-      "Verified Games",
-      "Commits",
-      "Arcade Score",
-    ];
-    const rows = list.map((item, idx) => {
-      const rank = idx + 1;
-      const name = '"' + (item.name || "").replace(/"/g, '""') + '"';
-      const login = item.login || "";
-      const games = item.gamesCount || 0;
-      const commits = item.commits || 0;
-      const score = calculateScore(item);
-      return [rank, name, login, games, commits, score].join(",");
-    });
-
-    const csvContent = [headers.join(","), ...rows].join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "ArcadeVerse_Leaderboard_NSOC2026.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
-
-  if (fetchBtn) {
-    fetchBtn.addEventListener("click", () => {
-      const repo = detectRepo();
-      fetchBtn.disabled = true;
-      fetchBtn.innerHTML = `<i data-lucide="loader-2" class="spin" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i> Syncing...`;
-      if (window.lucide) lucide.createIcons();
-      fetchLiveGitHubContributions(repo, true).finally(() => {
-        setTimeout(() => {
-          fetchBtn.disabled = false;
-          fetchBtn.innerHTML = `<i data-lucide="refresh-cw" style="width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px;"></i> Refresh Stats`;
-          if (window.lucide) lucide.createIcons();
-        }, 1000);
-      });
-    });
-  }
-
-  // --- Interactive Badge Tooltip Engine ---
-  let activeTooltipTarget = null;
-  const tooltipEl = document.createElement("div");
-  tooltipEl.id = "badge-interactive-tooltip";
-  tooltipEl.className = "badge-interactive-tooltip";
-  tooltipEl.setAttribute("role", "tooltip");
-  tooltipEl.setAttribute("aria-hidden", "true");
-  document.body.appendChild(tooltipEl);
-
-  function showBadgeTooltip(target) {
-    const name = target.getAttribute("data-badge-name");
-    const cat = target.getAttribute("data-badge-cat");
-    const req = target.getAttribute("data-badge-req");
-    if (!name || !req) return;
-
-    activeTooltipTarget = target;
-    tooltipEl.innerHTML = `
-      <div class="tooltip-header">
-        <span class="tooltip-cat">${escapeHTML(cat || "Milestone")}</span>
-        <strong class="tooltip-name">${escapeHTML(name)}</strong>
-      </div>
-      <div class="tooltip-req">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <span>${escapeHTML(req)}</span>
-      </div>
-    `;
-
-    tooltipEl.style.display = "block";
-    tooltipEl.setAttribute("aria-hidden", "false");
-
-    const rect = target.getBoundingClientRect();
-    const tooltipRect = tooltipEl.getBoundingClientRect();
-
-    let top = rect.top - tooltipRect.height - 8;
-    if (top < 10) {
-      top = rect.bottom + 8;
-    }
-
-    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
-    if (left < 10) left = 10;
-    if (left + tooltipRect.width > window.innerWidth - 10) {
-      left = window.innerWidth - tooltipRect.width - 10;
-    }
-
-    tooltipEl.style.top = `${top + window.scrollY}px`;
-    tooltipEl.style.left = `${left + window.scrollX}px`;
-    tooltipEl.classList.add("visible");
-  }
-
-  function hideBadgeTooltip() {
-    activeTooltipTarget = null;
-    tooltipEl.classList.remove("visible");
-    tooltipEl.style.display = "none";
-    tooltipEl.setAttribute("aria-hidden", "true");
-  }
-
-  document.addEventListener("mouseover", (e) => {
-    const badge = e.target.closest(".role-pill-badge[data-badge-req]");
-    if (badge) {
-      showBadgeTooltip(badge);
-    }
-  });
-
-  document.addEventListener("mouseout", (e) => {
-    const badge = e.target.closest(".role-pill-badge[data-badge-req]");
-    if (badge && activeTooltipTarget === badge) {
-      hideBadgeTooltip();
-    }
-  });
-
-  document.addEventListener("focusin", (e) => {
-    const badge = e.target.closest(".role-pill-badge[data-badge-req]");
-    if (badge) {
-      showBadgeTooltip(badge);
-    }
-  });
-
-  document.addEventListener("focusout", (e) => {
-    const badge = e.target.closest(".role-pill-badge[data-badge-req]");
-    if (badge && activeTooltipTarget === badge) {
-      hideBadgeTooltip();
-    }
-  });
-
-  document.addEventListener("click", (e) => {
-    const badge = e.target.closest(".role-pill-badge[data-badge-req]");
-    if (badge) {
-      if (activeTooltipTarget === badge) {
-        hideBadgeTooltip();
-      } else {
-        showBadgeTooltip(badge);
-      }
-    } else if (activeTooltipTarget && !tooltipEl.contains(e.target)) {
-      hideBadgeTooltip();
-    }
-  });
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (activeTooltipTarget) {
-        hideBadgeTooltip();
-      }
-    },
-    { passive: true },
-  );
-
-  const badgeLegendModal = document.getElementById("badge-legend-modal");
-  const badgeLegendBackdrop = document.getElementById("badge-legend-backdrop");
-  const openBadgeLegendBtn = document.getElementById("open-badge-legend-btn");
-  const badgeLegendLinkHint = document.getElementById("badge-legend-link-hint");
-  const closeBadgeLegendBtn = document.getElementById("close-badge-legend-btn");
-
-  function openBadgeLegend() {
-    if (!badgeLegendModal) return;
-    badgeLegendModal.style.display = "flex";
-    badgeLegendModal.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
     if (window.lucide) lucide.createIcons();
-    if (closeBadgeLegendBtn) closeBadgeLegendBtn.focus();
   }
-
-  function closeBadgeLegend() {
-    if (!badgeLegendModal) return;
-    badgeLegendModal.style.display = "none";
-    badgeLegendModal.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-    if (openBadgeLegendBtn) openBadgeLegendBtn.focus();
-  }
-
-  if (openBadgeLegendBtn) {
-    openBadgeLegendBtn.addEventListener("click", openBadgeLegend);
-  }
-  if (badgeLegendLinkHint) {
-    badgeLegendLinkHint.addEventListener("click", openBadgeLegend);
-  }
-  if (closeBadgeLegendBtn) {
-    closeBadgeLegendBtn.addEventListener("click", closeBadgeLegend);
-  }
-  if (badgeLegendBackdrop) {
-    badgeLegendBackdrop.addEventListener("click", closeBadgeLegend);
-  }
-
-  document.addEventListener("keydown", (e) => {
-    if (
-      e.key === "Escape" &&
-      badgeLegendModal &&
-      badgeLegendModal.style.display !== "none"
-    ) {
-      closeBadgeLegend();
-    }
-  });
 
   loadRegistryContributors();
-  const activeRepo = detectRepo();
-  if (repoInput) repoInput.value = activeRepo;
-  const initialAdmin = contributorsData.find(
-    (c) => c.login.toLowerCase() === "debasmitabose0",
-  );
-  if (initialAdmin) updateAdminSpotlight(initialAdmin);
-  renderPodium();
   renderTable();
-  fetchLiveGitHubContributions(activeRepo, false);
 });
