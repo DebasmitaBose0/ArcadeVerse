@@ -51,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeGame = null;
   let modalPushedHistory = false;
   let closeAutocomplete = () => {};
+  let resetActiveMutatorSession = () => {};
 
   // History API State Synchronization & Deep-Linking Engine
   function syncURLState(push = false) {
@@ -1693,6 +1694,9 @@ document.addEventListener("DOMContentLoaded", () => {
     gameSessionStartTime = Date.now();
     isConfirmingQuit = false;
     hideQuitConfirmationModal();
+    if (typeof resetActiveMutatorSession === "function") {
+      resetActiveMutatorSession();
+    }
     lastFocusedElement = triggerElement || document.activeElement;
 
     // Trigger bat animation if launching a Halloween Special Game
@@ -1888,6 +1892,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeGameModal(isFromPopState = false) {
     if (!gameModal || (!gameModal.classList.contains("active") && !activeGame)) return;
+    if (typeof resetActiveMutatorSession === "function") {
+      resetActiveMutatorSession();
+    }
     activeGame = null;
     isGameSessionActive = false;
     gameModal.classList.remove("active");
@@ -3420,9 +3427,235 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 6000);
   }
 
+  // ========================================================
+  // ARCADE GAME MUTATOR & CHALLENGE MODIFIER WHEEL SUBSYSTEM
+  // ========================================================
+  const CHALLENGE_MUTATORS = [
+    {
+      id: "mirror-dimension",
+      name: "Mirror Dimension",
+      category: "Visual Reflex",
+      badgeColor: "cyan",
+      description: "Spatial coordinates inverted! Left is right and right is left.",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="17 2 21 6 17 10"></polyline><line x1="21" y1="6" x2="9" y2="6"></line><path d="M3 10v6a4 4 0 0 0 4 4h10"></path></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "scaleX(-1)";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "speed-blitz",
+      name: "90-Second Speed Blitz",
+      category: "Time Attack",
+      badgeColor: "amber",
+      description: "Achieve target score or clear the stage before the 90-second buzzer!",
+      timerSeconds: 90,
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "cyber-noir",
+      name: "Cyber Noir Monolith",
+      category: "Aesthetic Filter",
+      badgeColor: "slate",
+      description: "Play through high-contrast retro monochrome noir phosphor.",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"></path></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "grayscale(1) contrast(1.45) brightness(0.95)";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "terminal-phosphor",
+      name: "Terminal Phosphor Radar",
+      category: "Aesthetic Filter",
+      badgeColor: "emerald",
+      description: "Vintage CRT monochrome green radar phosphor display.",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "sepia(1) hue-rotate(85deg) saturate(3) contrast(1.2)";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "vaporwave-overdrive",
+      name: "Vaporwave Overdrive",
+      category: "Aesthetic Filter",
+      badgeColor: "fuchsia",
+      description: "Supercharged chromatic spectrum shift and hyper-saturation.",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "hue-rotate(180deg) saturate(2)";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "one-handed-commando",
+      name: "One-Handed Commando",
+      category: "Physical Rule",
+      badgeColor: "blue",
+      description: "Play this session strictly using only your non-dominant hand!",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "hardcore-ironman",
+      name: "Hardcore Iron-Man",
+      category: "Precision Rule",
+      badgeColor: "rose",
+      description: "Zero margin for error. If you take damage or lose a life, instant restart!",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    },
+    {
+      id: "letterbox-aperture",
+      name: "Letterbox Aperture",
+      category: "Visual Challenge",
+      badgeColor: "purple",
+      description: "Narrow aperture widescreen letterbox restricts peripheral vision.",
+      iconSvg: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="18" rx="2"></rect><line x1="2" y1="8" x2="22" y2="8"></line><line x1="2" y1="16" x2="22" y2="16"></line></svg>',
+      apply: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "inset(12% 0 12% 0)";
+      },
+      cleanup: (frameWrap, iframe) => {
+        iframe.style.transform = "";
+        iframe.style.filter = "";
+        iframe.style.clipPath = "";
+      }
+    }
+  ];
+
+  let activeSessionMutator = null;
+  let mutatorTimerInterval = null;
+  let mutatorRemainingSeconds = 0;
+  let openMutatorWheelDialog = () => {};
+
+  function initArcadeMutatorWheel() {
+    const modalControls = document.querySelector(".modal-controls");
+    if (!modalControls || document.getElementById("modal-mutator-btn")) return;
+
+    // Create toolbar trigger button
+    const mutatorBtn = document.createElement("button");
+    mutatorBtn.id = "modal-mutator-btn";
+    mutatorBtn.className = "btn btn-sm btn-icon modal-mutator-btn";
+    mutatorBtn.type = "button";
+    mutatorBtn.title = "Challenge Mutators (Alt+M)";
+    mutatorBtn.setAttribute("aria-label", "Open Challenge Mutator Wheel");
+    mutatorBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="modal-mutator-icon" aria-hidden="true">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+        <path d="M16 8h.01"></path>
+        <path d="M8 8h.01"></path>
+        <path d="M8 16h.01"></path>
+        <path d="M16 16h.01"></path>
+        <path d="M12 12h.01"></path>
+      </svg>
+      <span class="mutator-active-indicator" aria-hidden="true"></span>
+    `;
+
+    // Mount before close button
+    const closeBtn = document.getElementById("close-modal-btn");
+    if (closeBtn) {
+      modalControls.insertBefore(mutatorBtn, closeBtn);
+    } else {
+      modalControls.appendChild(mutatorBtn);
+    }
+
+    // Reset session helper
+    resetActiveMutatorSession = () => {
+      if (mutatorTimerInterval) {
+        clearInterval(mutatorTimerInterval);
+        mutatorTimerInterval = null;
+      }
+      mutatorRemainingSeconds = 0;
+      if (activeSessionMutator && typeof activeSessionMutator.cleanup === "function") {
+        try {
+          activeSessionMutator.cleanup(modalFrameWrapper, gameIframe);
+        } catch (_) {}
+      }
+      activeSessionMutator = null;
+      const ribbon = document.getElementById("modal-mutator-ribbon");
+      if (ribbon) ribbon.classList.remove("active");
+      const indicator = document.querySelector(".mutator-active-indicator");
+      if (indicator) indicator.classList.remove("active");
+    };
+
+    mutatorBtn.addEventListener("click", () => {
+      if (typeof openMutatorWheelDialog === "function") {
+        openMutatorWheelDialog();
+      }
+    });
+
+    // Keyboard shortcut: Alt+M toggles mutator wheel
+    document.addEventListener("keydown", (e) => {
+      if (e.altKey && (e.key === "m" || e.key === "M")) {
+        if (gameModal && gameModal.classList.contains("active")) {
+          e.preventDefault();
+          if (typeof openMutatorWheelDialog === "function") {
+            openMutatorWheelDialog();
+          }
+        }
+      }
+    });
+  }
+
   // Initial render
   initFontPreloadResilience();
   initCatalogViewSwitcher();
   initAZJumpBar();
   initURLDeepLinking();
+  initArcadeMutatorWheel();
 });
