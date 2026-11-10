@@ -3582,6 +3582,57 @@ document.addEventListener("DOMContentLoaded", () => {
   let mutatorTimerInterval = null;
   let mutatorRemainingSeconds = 0;
   let openMutatorWheelDialog = () => {};
+  let applyMutatorToSession = () => {};
+
+  // Procedural Web Audio Synthesizer for Retro Arcade Wheel
+  let mutatorAudioCtx = null;
+  function getMutatorAudioCtx() {
+    try {
+      if (!mutatorAudioCtx) {
+        const AudioClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioClass) mutatorAudioCtx = new AudioClass();
+      }
+      if (mutatorAudioCtx && mutatorAudioCtx.state === "suspended") {
+        mutatorAudioCtx.resume().catch(() => {});
+      }
+    } catch (_) {}
+    return mutatorAudioCtx;
+  }
+
+  function playReelTick() {
+    try {
+      const ctx = getMutatorAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(620 + Math.random() * 200, ctx.currentTime);
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    } catch (_) {}
+  }
+
+  function playReelSnap() {
+    try {
+      const ctx = getMutatorAudioCtx();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(420, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(840, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.16);
+    } catch (_) {}
+  }
 
   function initArcadeMutatorWheel() {
     const modalControls = document.querySelector(".modal-controls");
@@ -3613,6 +3664,217 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       modalControls.appendChild(mutatorBtn);
     }
+
+    // Build Mutator Spinner Dialog
+    let dialogEl = document.getElementById("arcade-mutator-dialog");
+    if (!dialogEl) {
+      dialogEl = document.createElement("div");
+      dialogEl.id = "arcade-mutator-dialog";
+      dialogEl.className = "mutator-dialog-backdrop";
+      dialogEl.setAttribute("role", "dialog");
+      dialogEl.setAttribute("aria-modal", "true");
+      dialogEl.setAttribute("aria-labelledby", "mutator-dialog-title");
+      dialogEl.setAttribute("aria-hidden", "true");
+      dialogEl.innerHTML = `
+        <div class="mutator-dialog-card">
+          <div class="mutator-dialog-header">
+            <div class="mutator-dialog-heading-wrap">
+              <span class="mutator-dialog-badge">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                SESSION MODIFIERS
+              </span>
+              <h2 id="mutator-dialog-title" class="mutator-dialog-title">Arcade Challenge Mutator Wheel</h2>
+              <p class="mutator-dialog-subtitle">Spin to assign an optional kinetic or visual modifier to this play session.</p>
+            </div>
+            <button type="button" class="mutator-dialog-close-btn" id="mutator-dialog-close-btn" aria-label="Close Mutator Wheel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="mutator-reel-container">
+            <div class="mutator-reel-frame">
+              <div class="mutator-reel-pointer" aria-hidden="true"></div>
+              <div class="mutator-reel-viewport">
+                <div class="mutator-reel-track" id="mutator-reel-track"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mutator-preview-card" id="mutator-preview-card">
+            <div class="mutator-preview-icon" id="mutator-preview-icon"></div>
+            <div class="mutator-preview-details">
+              <div class="mutator-preview-meta">
+                <span class="mutator-preview-category" id="mutator-preview-category">Select or Spin</span>
+                <span class="mutator-preview-name" id="mutator-preview-name">Arcade Mutator</span>
+              </div>
+              <p class="mutator-preview-desc" id="mutator-preview-desc">Hit the Spin Wheel button below to randomly draw a game modifier.</p>
+            </div>
+          </div>
+
+          <div class="mutator-dialog-actions">
+            <button type="button" class="btn btn-secondary" id="mutator-spin-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+              <span>SPIN WHEEL</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="mutator-apply-btn" disabled>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Apply Mutator</span>
+            </button>
+            <button type="button" class="btn btn-outline mutator-clear-btn" id="mutator-clear-btn" style="display: none;">
+              <span>Clear Mutator</span>
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(dialogEl);
+    }
+
+    const reelTrack = dialogEl.querySelector("#mutator-reel-track");
+    const previewIcon = dialogEl.querySelector("#mutator-preview-icon");
+    const previewCat = dialogEl.querySelector("#mutator-preview-category");
+    const previewName = dialogEl.querySelector("#mutator-preview-name");
+    const previewDesc = dialogEl.querySelector("#mutator-preview-desc");
+    const spinBtn = dialogEl.querySelector("#mutator-spin-btn");
+    const applyBtn = dialogEl.querySelector("#mutator-apply-btn");
+    const clearBtn = dialogEl.querySelector("#mutator-clear-btn");
+    const closeDialogBtn = dialogEl.querySelector("#mutator-dialog-close-btn");
+
+    let isSpinning = false;
+    let selectedMutator = null;
+
+    // Populate reel cards (3 full cycles for smooth slot-reel momentum)
+    function populateReelTrack() {
+      if (!reelTrack) return;
+      reelTrack.innerHTML = "";
+      const cycles = 3;
+      for (let c = 0; c < cycles; c++) {
+        CHALLENGE_MUTATORS.forEach((m) => {
+          const card = document.createElement("div");
+          card.className = "mutator-reel-item";
+          card.dataset.mutatorId = m.id;
+          card.innerHTML = `
+            <div class="reel-item-icon">${m.iconSvg}</div>
+            <div class="reel-item-text">
+              <span class="reel-item-title">${m.name}</span>
+              <span class="reel-item-cat">${m.category}</span>
+            </div>
+          `;
+          reelTrack.appendChild(card);
+        });
+      }
+    }
+    populateReelTrack();
+
+    function updatePreview(mutator) {
+      if (!mutator) {
+        previewIcon.innerHTML = CHALLENGE_MUTATORS[0].iconSvg;
+        previewCat.textContent = "Select or Spin";
+        previewName.textContent = "Arcade Mutator";
+        previewDesc.textContent = "Hit the Spin Wheel button below to randomly draw a game modifier.";
+        applyBtn.disabled = true;
+        selectedMutator = null;
+        return;
+      }
+      selectedMutator = mutator;
+      previewIcon.innerHTML = mutator.iconSvg;
+      previewCat.textContent = mutator.category;
+      previewName.textContent = mutator.name;
+      previewDesc.textContent = mutator.description;
+      applyBtn.disabled = false;
+    }
+
+    function spinReel() {
+      if (isSpinning) return;
+      isSpinning = true;
+      spinBtn.disabled = true;
+      applyBtn.disabled = true;
+
+      const targetIndex = Math.floor(Math.random() * CHALLENGE_MUTATORS.length);
+      const chosenMutator = CHALLENGE_MUTATORS[targetIndex];
+
+      const itemHeight = 60;
+      const cycleOffset = CHALLENGE_MUTATORS.length * itemHeight;
+      const targetY = cycleOffset + (targetIndex * itemHeight);
+
+      // Play staggered tick sounds
+      const totalTicks = 12;
+      for (let t = 0; t < totalTicks; t++) {
+        setTimeout(() => {
+          playReelTick();
+        }, t * (55 + t * 6));
+      }
+
+      reelTrack.style.transition = "transform 0.9s cubic-bezier(0.12, 0.88, 0.22, 1.0)";
+      reelTrack.style.transform = `translateY(-${targetY}px)`;
+
+      setTimeout(() => {
+        isSpinning = false;
+        spinBtn.disabled = false;
+        applyBtn.disabled = false;
+        playReelSnap();
+        updatePreview(chosenMutator);
+
+        // Highlight selected reel card
+        const allItems = reelTrack.querySelectorAll(".mutator-reel-item");
+        allItems.forEach(it => it.classList.remove("selected"));
+        const selectedEl = allItems[CHALLENGE_MUTATORS.length + targetIndex];
+        if (selectedEl) selectedEl.classList.add("selected");
+      }, 950);
+    }
+
+    openMutatorWheelDialog = () => {
+      dialogEl.classList.add("active");
+      dialogEl.setAttribute("aria-hidden", "false");
+      document.body.classList.add("mutator-dialog-open");
+
+      if (activeSessionMutator) {
+        clearBtn.style.display = "inline-flex";
+        updatePreview(activeSessionMutator);
+      } else {
+        clearBtn.style.display = "none";
+        if (!selectedMutator) {
+          updatePreview(null);
+        }
+      }
+      setTimeout(() => spinBtn.focus(), 80);
+    };
+
+    function closeMutatorWheelDialog() {
+      dialogEl.classList.remove("active");
+      dialogEl.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("mutator-dialog-open");
+      if (mutatorBtn) mutatorBtn.focus();
+    }
+
+    closeDialogBtn.addEventListener("click", closeMutatorWheelDialog);
+    dialogEl.addEventListener("click", (e) => {
+      if (e.target === dialogEl) closeMutatorWheelDialog();
+    });
+
+    spinBtn.addEventListener("click", spinReel);
+
+    applyBtn.addEventListener("click", () => {
+      if (!selectedMutator) return;
+      applyMutatorToSession(selectedMutator);
+      closeMutatorWheelDialog();
+    });
+
+    clearBtn.addEventListener("click", () => {
+      resetActiveMutatorSession();
+      closeMutatorWheelDialog();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (dialogEl.classList.contains("active")) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          closeMutatorWheelDialog();
+        } else if ((e.key === " " || e.key === "Enter") && document.activeElement === spinBtn) {
+          e.preventDefault();
+          spinReel();
+        }
+      }
+    });
 
     // Reset session helper
     resetActiveMutatorSession = () => {
