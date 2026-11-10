@@ -10570,4 +10570,578 @@ html.a11y-reduced-motion .search-clear-btn {
   box-shadow: 0 0 6px #38bdf8;
   transform: translate(-50%, -50%);
 }
+
+/* ========================================================
+   ARCADE GAME MUTATOR & CHALLENGE MODIFIER WHEEL STYLES
+   ======================================================== */
+
+.modal-mutator-btn {
+  position: relative;
+}
+
+.mutator-active-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00f5ff;
+  box-shadow: 0 0 8px #00f5ff;
+  display: none;
+}
+
+.mutator-active-indicator.active {
+  display: block;
+  animation: mutatorPulse 1.5s infinite;
+}
+
+@keyframes mutatorPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.4;
+  }
+}
+
+/* Mutator Dialog Backdrop & Window */
+.mutator-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 7, 15, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  padding: 16px;
+}
+
+.mutator-dialog-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mutator-dialog-card {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(0, 245, 255, 0.15);
+  color: #f8fafc;
+  transform: translateY(12px) scale(0.97);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mutator-dialog-backdrop.active .mutator-dialog-card {
+  transform: translateY(0) scale(1);
+}
+
+/* Light theme dialog */
+body.light-theme .mutator-dialog-card,
+[data-theme="light"] .mutator-dialog-card {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.15), 0 0 25px rgba(99, 102, 241, 0.12);
+  color: #0f172a;
+}
+
+/* Header */
+.mutator-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mutator-dialog-heading-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mutator-dialog-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #00f5ff;
+}
+
+body.light-theme .mutator-dialog-badge,
+[data-theme="light"] .mutator-dialog-badge {
+  color: #6366f1;
+}
+
+.mutator-dialog-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: inherit;
+}
+
+.mutator-dialog-subtitle {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+body.light-theme .mutator-dialog-subtitle,
+[data-theme="light"] .mutator-dialog-subtitle {
+  color: #64748b;
+}
+
+.mutator-dialog-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.mutator-dialog-close-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .mutator-dialog-close-btn:hover,
+[data-theme="light"] .mutator-dialog-close-btn:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* Slot-Reel Viewport */
+.mutator-reel-container {
+  margin-bottom: 18px;
+}
+
+.mutator-reel-frame {
+  position: relative;
+  background: rgba(8, 12, 22, 0.85);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 12px;
+  padding: 6px 12px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+body.light-theme .mutator-reel-frame,
+[data-theme="light"] .mutator-reel-frame {
+  background: rgba(241, 245, 249, 0.9);
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.mutator-reel-pointer {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid #00f5ff;
+  pointer-events: none;
+  z-index: 5;
+}
+
+body.light-theme .mutator-reel-pointer,
+[data-theme="light"] .mutator-reel-pointer {
+  border-right-color: #6366f1;
+}
+
+.mutator-reel-viewport {
+  height: 60px;
+  overflow: hidden;
+  position: relative;
+}
+
+.mutator-reel-track {
+  display: flex;
+  flex-direction: column;
+  transform: translateY(0);
+}
+
+.mutator-reel-item {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.reel-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(0, 245, 255, 0.12);
+  color: #00f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+body.light-theme .reel-item-icon,
+[data-theme="light"] .reel-item-icon {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.reel-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reel-item-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.reel-item-cat {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+body.light-theme .reel-item-cat,
+[data-theme="light"] .reel-item-cat {
+  color: #64748b;
+}
+
+/* Selected mutator preview card */
+.mutator-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(0, 245, 255, 0.06);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+}
+
+body.light-theme .mutator-preview-card,
+[data-theme="light"] .mutator-preview-card {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.mutator-preview-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(0, 245, 255, 0.15);
+  color: #00f5ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+body.light-theme .mutator-preview-icon,
+[data-theme="light"] .mutator-preview-icon {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.mutator-preview-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.mutator-preview-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+
+.mutator-preview-category {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(0, 245, 255, 0.15);
+  color: #00f5ff;
+}
+
+body.light-theme .mutator-preview-category,
+[data-theme="light"] .mutator-preview-category {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+}
+
+.mutator-preview-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.mutator-preview-desc {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+body.light-theme .mutator-preview-desc,
+[data-theme="light"] .mutator-preview-desc {
+  color: #64748b;
+}
+
+/* Action buttons */
+.mutator-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.mutator-clear-btn {
+  margin-right: auto;
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.mutator-clear-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #ef4444;
+}
+
+/* Mutator In-Game HUD Ribbon */
+.modal-mutator-ribbon {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 18px;
+  background: rgba(13, 17, 28, 0.92);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 15;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.modal-mutator-ribbon.active {
+  display: flex;
+}
+
+body.light-theme .modal-mutator-ribbon,
+[data-theme="light"] .modal-mutator-ribbon {
+  background: rgba(248, 250, 252, 0.95);
+  border-bottom: 1px solid rgba(99, 102, 241, 0.25);
+  color: #0f172a;
+}
+
+.mutator-ribbon-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mutator-ribbon-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 245, 255, 0.12);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #00f5ff;
+  white-space: nowrap;
+}
+
+body.light-theme .mutator-ribbon-badge,
+[data-theme="light"] .mutator-ribbon-badge {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #6366f1;
+}
+
+.mutator-ribbon-icon {
+  display: flex;
+  align-items: center;
+}
+
+.mutator-ribbon-desc {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.light-theme .mutator-ribbon-desc,
+[data-theme="light"] .mutator-ribbon-desc {
+  color: #64748b;
+}
+
+.mutator-ribbon-center {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #f59e0b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+}
+
+.mutator-ribbon-center.is-warning {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+  animation: timerWarningPulse 0.5s infinite;
+}
+
+@keyframes timerWarningPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.mutator-ribbon-center.is-expired {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.mutator-ribbon-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mutator-complete-btn {
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mutator-complete-btn:hover {
+  background: rgba(16, 185, 129, 0.28);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.mutator-complete-btn.completed {
+  background: rgba(16, 185, 129, 0.32);
+  border-color: #10b981;
+  color: #34d399;
+  cursor: default;
+}
+
+.mutator-ribbon-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  padding: 5px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mutator-ribbon-btn:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+body.light-theme .mutator-ribbon-btn {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #64748b;
+}
+
+body.light-theme .mutator-ribbon-btn:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Canvas Confetti */
+.mutator-confetti-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .modal-mutator-ribbon {
+    flex-wrap: wrap;
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  .mutator-ribbon-desc {
+    display: none;
+  }
+  .mutator-ribbon-left {
+    flex: auto;
+  }
+  .mutator-dialog-card {
+    padding: 18px 16px;
+  }
+  .mutator-dialog-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .mutator-reel-track,
+  .mutator-dialog-card,
+  .mutator-active-indicator {
+    transition: none !important;
+    animation: none !important;
+  }
 }
