@@ -3876,6 +3876,266 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // LocalStorage completion persistence
+    const MUTATOR_STORAGE_KEY = "arcadeverse_mutator_completions";
+
+    function getCompletedMutators(gameId) {
+      if (!gameId) return [];
+      try {
+        const raw = localStorage.getItem(MUTATOR_STORAGE_KEY);
+        if (!raw) return [];
+        const data = JSON.parse(raw);
+        return Array.isArray(data[gameId]) ? data[gameId] : [];
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function markMutatorCompleted(gameId, mutatorId) {
+      if (!gameId || !mutatorId) return;
+      try {
+        let data = {};
+        const raw = localStorage.getItem(MUTATOR_STORAGE_KEY);
+        if (raw) data = JSON.parse(raw) || {};
+        if (!Array.isArray(data[gameId])) data[gameId] = [];
+        if (!data[gameId].includes(mutatorId)) {
+          data[gameId].push(mutatorId);
+        }
+        localStorage.setItem(MUTATOR_STORAGE_KEY, JSON.stringify(data));
+      } catch (_) {}
+    }
+
+    function playVictoryFanfare() {
+      try {
+        const ctx = getMutatorAudioCtx();
+        if (!ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.09);
+          gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.09 + 0.32);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.09);
+          osc.stop(ctx.currentTime + idx * 0.09 + 0.32);
+        });
+      } catch (_) {}
+    }
+
+    function triggerConfettiBurst() {
+      const container = modalWindow || document.body;
+      const existing = document.getElementById("mutator-confetti-canvas");
+      if (existing) existing.remove();
+
+      const canvas = document.createElement("canvas");
+      canvas.id = "mutator-confetti-canvas";
+      canvas.className = "mutator-confetti-canvas";
+      canvas.width = container.clientWidth || 800;
+      canvas.height = container.clientHeight || 600;
+      container.appendChild(canvas);
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const colors = ["#00f5ff", "#ec4899", "#f59e0b", "#10b981", "#8b5cf6", "#38bdf8"];
+      const particles = [];
+      const count = 48;
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 120,
+          y: canvas.height * 0.25 + (Math.random() - 0.5) * 60,
+          vx: (Math.random() - 0.5) * 9,
+          vy: -Math.random() * 7 - 3,
+          size: Math.random() * 7 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 14,
+          alpha: 1.0
+        });
+      }
+
+      let animHandle = null;
+      const startTime = Date.now();
+
+      function render() {
+        const elapsed = Date.now() - startTime;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.28;
+          p.vx *= 0.98;
+          p.rotation += p.rotSpeed;
+          p.alpha = Math.max(0, 1 - (elapsed / 1600));
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        }
+
+        if (elapsed < 1600) {
+          animHandle = requestAnimationFrame(render);
+        } else {
+          if (canvas.parentElement) canvas.remove();
+        }
+      }
+      render();
+    }
+
+    // Build Mutator HUD Ribbon
+    let ribbonEl = document.getElementById("modal-mutator-ribbon");
+    if (!ribbonEl && modalWindow) {
+      ribbonEl = document.createElement("div");
+      ribbonEl.id = "modal-mutator-ribbon";
+      ribbonEl.className = "modal-mutator-ribbon";
+      ribbonEl.setAttribute("role", "region");
+      ribbonEl.setAttribute("aria-label", "Active Game Mutator Challenge");
+      ribbonEl.innerHTML = `
+        <div class="mutator-ribbon-left">
+          <span class="mutator-ribbon-badge" id="mutator-ribbon-badge">
+            <span class="mutator-ribbon-icon" id="mutator-ribbon-icon"></span>
+            <span class="mutator-ribbon-name" id="mutator-ribbon-name">Modifier</span>
+          </span>
+          <span class="mutator-ribbon-desc" id="mutator-ribbon-desc">Modifier constraint</span>
+        </div>
+        <div class="mutator-ribbon-center" id="mutator-ribbon-timer-wrap" style="display: none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span class="mutator-ribbon-timer" id="mutator-ribbon-timer">01:30</span>
+        </div>
+        <div class="mutator-ribbon-right">
+          <button type="button" class="btn btn-sm mutator-complete-btn" id="mutator-complete-btn" title="Mark challenge complete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span id="mutator-complete-text">Mark Complete</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-icon mutator-ribbon-btn" id="mutator-ribbon-reroll-btn" title="Reroll Mutator">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          </button>
+          <button type="button" class="btn btn-sm btn-icon mutator-ribbon-btn" id="mutator-ribbon-dismiss-btn" title="Clear Mutator">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      `;
+      if (modalFrameWrapper) {
+        modalWindow.insertBefore(ribbonEl, modalFrameWrapper);
+      } else {
+        modalWindow.appendChild(ribbonEl);
+      }
+    }
+
+    const ribbonIcon = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-icon") : null;
+    const ribbonName = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-name") : null;
+    const ribbonDesc = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-desc") : null;
+    const ribbonTimerWrap = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-timer-wrap") : null;
+    const ribbonTimer = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-timer") : null;
+    const completeBtn = ribbonEl ? ribbonEl.querySelector("#mutator-complete-btn") : null;
+    const completeText = ribbonEl ? ribbonEl.querySelector("#mutator-complete-text") : null;
+    const rerollRibbonBtn = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-reroll-btn") : null;
+    const dismissRibbonBtn = ribbonEl ? ribbonEl.querySelector("#mutator-ribbon-dismiss-btn") : null;
+
+    if (rerollRibbonBtn) {
+      rerollRibbonBtn.addEventListener("click", () => {
+        openMutatorWheelDialog();
+      });
+    }
+
+    if (dismissRibbonBtn) {
+      dismissRibbonBtn.addEventListener("click", () => {
+        resetActiveMutatorSession();
+      });
+    }
+
+    if (completeBtn) {
+      completeBtn.addEventListener("click", () => {
+        if (!activeSessionMutator || !activeGame) return;
+        markMutatorCompleted(activeGame.id, activeSessionMutator.id);
+        completeBtn.classList.add("completed");
+        if (completeText) completeText.textContent = "Completed!";
+        playVictoryFanfare();
+        triggerConfettiBurst();
+      });
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+    }
+
+    applyMutatorToSession = (mutator) => {
+      if (!mutator) return;
+
+      if (activeSessionMutator && typeof activeSessionMutator.cleanup === "function") {
+        try {
+          activeSessionMutator.cleanup(modalFrameWrapper, gameIframe);
+        } catch (_) {}
+      }
+      if (mutatorTimerInterval) {
+        clearInterval(mutatorTimerInterval);
+        mutatorTimerInterval = null;
+      }
+
+      activeSessionMutator = mutator;
+      try {
+        mutator.apply(modalFrameWrapper, gameIframe);
+      } catch (_) {}
+
+      const indicator = document.querySelector(".mutator-active-indicator");
+      if (indicator) indicator.classList.add("active");
+
+      if (ribbonEl) {
+        if (ribbonIcon) ribbonIcon.innerHTML = mutator.iconSvg;
+        if (ribbonName) ribbonName.textContent = mutator.name;
+        if (ribbonDesc) ribbonDesc.textContent = mutator.description;
+
+        const completedList = activeGame ? getCompletedMutators(activeGame.id) : [];
+        if (completedList.includes(mutator.id)) {
+          if (completeBtn) completeBtn.classList.add("completed");
+          if (completeText) completeText.textContent = "Completed!";
+        } else {
+          if (completeBtn) completeBtn.classList.remove("completed");
+          if (completeText) completeText.textContent = "Mark Complete";
+        }
+
+        if (mutator.timerSeconds && ribbonTimerWrap && ribbonTimer) {
+          ribbonTimerWrap.style.display = "inline-flex";
+          ribbonTimerWrap.classList.remove("is-warning", "is-expired");
+          mutatorRemainingSeconds = mutator.timerSeconds;
+          ribbonTimer.textContent = formatTime(mutatorRemainingSeconds);
+
+          mutatorTimerInterval = setInterval(() => {
+            mutatorRemainingSeconds--;
+            if (mutatorRemainingSeconds <= 10 && mutatorRemainingSeconds > 0) {
+              ribbonTimerWrap.classList.add("is-warning");
+              playReelTick();
+            }
+            if (mutatorRemainingSeconds <= 0) {
+              clearInterval(mutatorTimerInterval);
+              mutatorTimerInterval = null;
+              ribbonTimer.textContent = "TIME UP!";
+              ribbonTimerWrap.classList.remove("is-warning");
+              ribbonTimerWrap.classList.add("is-expired");
+            } else {
+              ribbonTimer.textContent = formatTime(mutatorRemainingSeconds);
+            }
+          }, 1000);
+        } else if (ribbonTimerWrap) {
+          ribbonTimerWrap.style.display = "none";
+        }
+
+        ribbonEl.classList.add("active");
+      }
+    };
+
     // Reset session helper
     resetActiveMutatorSession = () => {
       if (mutatorTimerInterval) {
@@ -3889,10 +4149,11 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (_) {}
       }
       activeSessionMutator = null;
-      const ribbon = document.getElementById("modal-mutator-ribbon");
-      if (ribbon) ribbon.classList.remove("active");
+      if (ribbonEl) ribbonEl.classList.remove("active");
       const indicator = document.querySelector(".mutator-active-indicator");
       if (indicator) indicator.classList.remove("active");
+      const confetti = document.getElementById("mutator-confetti-canvas");
+      if (confetti) confetti.remove();
     };
 
     mutatorBtn.addEventListener("click", () => {
