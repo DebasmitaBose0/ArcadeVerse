@@ -2224,6 +2224,35 @@ html.a11y-reduced-motion .game-card.removing-favorite {
   transform: scale(1.1);
 }
 
+/* Play count, only rendered while the Most Played sort is active */
+.game-plays-badge {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(12, 14, 20, 0.8);
+  border: 1px solid var(--border-subtle);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-sm);
+}
+
+#games-grid.view-list .game-card-preview .game-plays-badge {
+  position: static !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .game-plays-badge {
+  background: rgba(255, 255, 255, 0.95);
+  color: #b45309;
+  border: 1px solid var(--border-medium);
+}
+
 .game-category-tag {
   position: absolute;
   top: 1rem;

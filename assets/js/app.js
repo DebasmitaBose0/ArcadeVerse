@@ -477,7 +477,8 @@ document.addEventListener("DOMContentLoaded", () => {
         /^arcadeverse_recently_played/,
         /^av_play_log/,
         /^av_session_/,
-        /^arcadeverse_telemetry/
+        /^arcadeverse_telemetry/,
+        /^arcadeverse_play_counts/
       ],
       // Priority 3: Non-critical UI state toggles & filters
       [
@@ -679,6 +680,86 @@ document.addEventListener("DOMContentLoaded", () => {
   function isFavorite(gameId) {
     return getFavorites().has(gameId);
   }
+
+  // ==========================================================================
+  // MOST PLAYED LEDGER (#434)
+  // A game counts as played once it has been open in the player for 10 seconds.
+  // Counts live only in this browser: { "<gameId>": <plays> } in localStorage.
+  // ==========================================================================
+  const PLAY_COUNTS_STORAGE_KEY = "arcadeverse_play_counts";
+  const PLAY_COUNT_AFTER_MS = 10000;
+  let playCountsStale = false;
+
+  function getPlayCounts() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PLAY_COUNTS_STORAGE_KEY) || "{}");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      const counts = {};
+      Object.keys(parsed).forEach((id) => {
+        const n = Number(parsed[id]);
+        if (Number.isFinite(n) && n > 0) counts[id] = Math.floor(n);
+      });
+      return counts;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function countPlay(gameId) {
+    if (!gameId) return;
+    const counts = getPlayCounts();
+    counts[gameId] = (counts[gameId] || 0) + 1;
+    ArcadeStorageResilience.safeSetItem(PLAY_COUNTS_STORAGE_KEY, JSON.stringify(counts));
+    // Re-sort Most Played. While a game is open the grid waits for the modal to close,
+    // so it is not rebuilt behind a running game.
+    if (currentSort === "popularity") {
+      if (gameModal.classList.contains("active")) playCountsStale = true;
+      else renderGames();
+    }
+  }
+
+  // One timer for the game that is open. Closing the modal or opening another game cancels it,
+  // and it pauses while the tab is hidden so background time does not count as playing.
+  let playTimer = null;
+  let playTimerGameId = null;
+  let playTimerLeft = 0;
+  let playTimerStartedAt = 0;
+
+  function runPlayTimer() {
+    playTimerStartedAt = Date.now();
+    playTimer = setTimeout(() => {
+      const id = playTimerGameId;
+      playTimer = null;
+      playTimerGameId = null;
+      countPlay(id);
+    }, playTimerLeft);
+  }
+
+  function cancelPlayTimer() {
+    clearTimeout(playTimer);
+    playTimer = null;
+    playTimerGameId = null;
+  }
+
+  function armPlayTimer(gameId) {
+    cancelPlayTimer();
+    playTimerGameId = gameId;
+    playTimerLeft = PLAY_COUNT_AFTER_MS;
+    if (!document.hidden) runPlayTimer();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!playTimerGameId) return;
+    if (document.hidden) {
+      if (playTimer) {
+        clearTimeout(playTimer);
+        playTimer = null;
+        playTimerLeft = Math.max(0, playTimerLeft - (Date.now() - playTimerStartedAt));
+      }
+    } else if (!playTimer) {
+      runPlayTimer();
+    }
+  });
 
   function updateFavoritesBadge() {
     const favCount = getFavorites().size;
@@ -1124,6 +1205,7 @@ document.addEventListener("DOMContentLoaded", () => {
     gamesGrid.innerHTML = "";
     gamesGrid.classList.toggle("view-list", currentCatalogView === "list");
     const favs = getFavorites();
+    const playCounts = currentSort === "popularity" ? getPlayCounts() : null;
 
     const currentDataSet = GAMES_REGISTRY;
 
@@ -1269,6 +1351,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const diffA = getDifficultyRank(a);
         const diffB = getDifficultyRank(b);
         if (diffB !== diffA) return diffB - diffA;
+        return a.title.localeCompare(b.title);
+      } else if (currentSort === "popularity") {
+        const playsDiff = (playCounts[b.id] || 0) - (playCounts[a.id] || 0);
+        if (playsDiff !== 0) return playsDiff;
+        // same count (or none yet): fall back to the Featured order
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        const rA = (window.GameRatings && window.GameRatings.ratings[a.id]) || (a.stars ? (a.stars / 10) : 5.0);
+        const rB = (window.GameRatings && window.GameRatings.ratings[b.id]) || (b.stars ? (b.stars / 10) : 5.0);
+        if (rB !== rA) return rB - rA;
         return a.title.localeCompare(b.title);
       } else {
         // "featured": featured items first, then by rating / title
@@ -1575,6 +1667,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const displayScore = userRating ? Number(userRating).toFixed(1) : (game.stars ? (game.stars / 10).toFixed(1) : "5.0");
       const currentStar = userRating || Math.min(5, Math.max(1, Math.round((game.stars || 25) / 10)));
 
+      const plays = playCounts ? playCounts[game.id] || 0 : 0;
+      const playsBadgeHtml = plays > 0 ? `
+        <span class="game-plays-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          ${plays} Play${plays === 1 ? "" : "s"}
+        </span>` : "";
+
       const isHalloween = isHalloweenGame(game);
       const halloweenBadgeHtml = isHalloween ? `
         <span class="badge-halloween-special" title="Halloween Special Games">
@@ -1595,7 +1694,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
             </svg>
           </button>
-          <div class="game-icon">${iconHtml}</div>
+          <div class="game-icon">${iconHtml}</div>${playsBadgeHtml}
         </div>
         <div class="game-card-body">
           <h3 class="game-card-title">${safeTitle}${halloweenTitleBadge}</h3>
@@ -2077,6 +2176,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.ArcadeRecent.recordPlayed(game.id, game.title, game.category);
     }
     window.dispatchEvent(new CustomEvent("arcadeverse:game-launched", { detail: game }));
+    armPlayTimer(game.id);
 
     // Mount animation class to prevent visual tearing
     modalFrameWrapper.classList.add("is-mounting");
@@ -2336,6 +2436,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (_) {}
     }, 100);
 
+    cancelPlayTimer();
     document.body.style.overflow = "";
     document.body.style.overscrollBehavior = "";
     document.body.classList.remove("modal-launching-in-progress");
@@ -2344,6 +2445,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (gameModal) gameModal.classList.remove("fullscreen-mode");
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    }
+    if (playCountsStale) {
+      playCountsStale = false;
+      renderGames();
+      // renderGames rebuilt the cards, so the Play button the game was opened from is gone
+      if (lastFocusedElement && !lastFocusedElement.isConnected && lastFocusedElement.dataset.id) {
+        lastFocusedElement = gamesGrid.querySelector(`.btn-play-trigger[data-id="${lastFocusedElement.dataset.id}"]`);
+      }
     }
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
