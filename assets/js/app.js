@@ -467,7 +467,9 @@ document.addEventListener("DOMContentLoaded", () => {
       "arcadeverse_theme",
       "arcadeverse_game_ratings",
       "arcadeverse_master_volume",
-      "arcadeverse_muted"
+      "arcadeverse_muted",
+      "av_master_volume",
+      "av_sound_muted"
     ]);
 
     function isQuotaError(err) {
@@ -1868,6 +1870,92 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3500);
   }
 
+  // =========================================================================
+  // ARCADEVERSE MASTER VOLUME & AUDIO SYNC BUS
+  // Synchronizes av_master_volume & av_sound_muted with embedded iframe games
+  // =========================================================================
+  function syncAudioPreferences(muted, volume) {
+    try {
+      let isMuted;
+      if (typeof muted === "boolean") {
+        isMuted = muted;
+      } else if (window.SoundEngine && typeof window.SoundEngine.enabled === "boolean") {
+        isMuted = !window.SoundEngine.enabled;
+      } else if (localStorage.getItem("av_sound_muted") !== null) {
+        isMuted = localStorage.getItem("av_sound_muted") === "true";
+      } else {
+        isMuted = localStorage.getItem("arcadeverse_muted") === "true";
+      }
+
+      let masterVol;
+      if (typeof volume === "number") {
+        masterVol = volume;
+      } else if (window.SoundEngine && typeof window.SoundEngine.volume === "number") {
+        masterVol = window.SoundEngine.volume;
+      } else if (localStorage.getItem("av_master_volume") !== null) {
+        masterVol = parseFloat(localStorage.getItem("av_master_volume"));
+      } else {
+        masterVol = parseFloat(localStorage.getItem("arcadeverse_master_volume"));
+      }
+      if (isNaN(masterVol) || masterVol === null || masterVol === undefined) {
+        masterVol = 0.28;
+      }
+
+      localStorage.setItem("av_sound_muted", isMuted ? "true" : "false");
+      localStorage.setItem("av_master_volume", String(masterVol));
+      localStorage.setItem("arcadeverse_muted", isMuted ? "true" : "false");
+      localStorage.setItem("arcadeverse_master_volume", String(masterVol));
+
+      return { muted: isMuted, volume: masterVol };
+    } catch (_) {
+      return { muted: false, volume: 0.28 };
+    }
+  }
+
+  function broadcastVolumeSyncToGame(muted, volume) {
+    try {
+      if (!gameIframe || !gameIframe.contentWindow) return;
+      const state = (typeof muted === "boolean" && typeof volume === "number")
+        ? { muted, volume }
+        : syncAudioPreferences();
+
+      const payload = {
+        type: "ARCADEVERSE_VOLUME_SYNC",
+        sessionToken: (activeGameSession && activeGameSession.token) || null,
+        muted: state.muted,
+        volume: state.volume,
+        gain: state.muted ? 0 : state.volume,
+        timestamp: Date.now()
+      };
+
+      gameIframe.contentWindow.postMessage(payload, "*");
+    } catch (_) {}
+  }
+
+  function hookSoundEngineAudioSync() {
+    if (!window.SoundEngine) return;
+    const origBroadcast = window.SoundEngine.broadcastAudioConfig;
+    window.SoundEngine.broadcastAudioConfig = function () {
+      if (typeof origBroadcast === "function") {
+        try { origBroadcast.apply(this, arguments); } catch (_) {}
+      }
+      const audioState = syncAudioPreferences(!window.SoundEngine.enabled, window.SoundEngine.volume);
+      broadcastVolumeSyncToGame(audioState.muted, audioState.volume);
+    };
+
+    const origSaveSettings = window.SoundEngine.saveSettings;
+    window.SoundEngine.saveSettings = function () {
+      if (typeof origSaveSettings === "function") {
+        try { origSaveSettings.apply(this, arguments); } catch (_) {}
+      }
+      syncAudioPreferences(!window.SoundEngine.enabled, window.SoundEngine.volume);
+    };
+  }
+
+  hookSoundEngineAudioSync();
+  setTimeout(hookSoundEngineAudioSync, 50);
+  setTimeout(hookSoundEngineAudioSync, 200);
+
   // Bind iframe load listener once at root level to ensure 100% reliable load detection
   if (gameIframe) {
     gameIframe.addEventListener("load", () => {
@@ -1883,19 +1971,19 @@ document.addEventListener("DOMContentLoaded", () => {
       initiateGameIframeSession(activeGame);
 
       try {
+        const audioState = syncAudioPreferences();
+        broadcastVolumeSyncToGame(audioState.muted, audioState.volume);
+
         if (window.SoundEngine && typeof window.SoundEngine.broadcastAudioConfig === "function") {
           window.SoundEngine.broadcastAudioConfig();
-        } else {
-          const isMuted = localStorage.getItem("arcadeverse_muted") === "true";
-          const masterVol = parseFloat(localStorage.getItem("arcadeverse_master_volume")) || 0.28;
-          if (gameIframe.contentWindow) {
-            gameIframe.contentWindow.postMessage({
-              type: "ARCADEVERSE_AUDIO_CONFIG",
-              sessionToken: activeGameSession.token,
-              muted: isMuted,
-              volume: masterVol
-            }, "*");
-          }
+        } else if (gameIframe.contentWindow) {
+          gameIframe.contentWindow.postMessage({
+            type: "ARCADEVERSE_AUDIO_CONFIG",
+            sessionToken: activeGameSession.token,
+            muted: audioState.muted,
+            volume: audioState.volume,
+            gain: audioState.muted ? 0 : audioState.volume
+          }, "*");
         }
       } catch (_) {}
     });
@@ -1978,10 +2066,15 @@ document.addEventListener("DOMContentLoaded", () => {
     announceToScreenReader(`Launching ${game.title}. Category: ${game.category}. Built by ${game.author}.`);
     startIframeTimeout(game);
 
+    const audioState = syncAudioPreferences();
+
     // Storage Isolation Bridge: Pass gameId via URL parameter so SDK attaches namespaced proxy
     let iframeUrl = game.path;
     if (iframeUrl && !iframeUrl.includes("gameId=")) {
       iframeUrl += (iframeUrl.includes("?") ? "&" : "?") + "gameId=" + encodeURIComponent(game.id);
+    }
+    if (iframeUrl && !iframeUrl.includes("av_muted=")) {
+      iframeUrl += (iframeUrl.includes("?") ? "&" : "?") + "av_muted=" + (audioState.muted ? "1" : "0") + "&av_vol=" + encodeURIComponent(audioState.volume);
     }
     gameIframe.src = iframeUrl;
     newTabBtn.href = game.path;
@@ -2307,7 +2400,22 @@ document.addEventListener("DOMContentLoaded", () => {
     modalSoundBtn.addEventListener("click", () => {
       if (window.SoundEngine && typeof window.SoundEngine.toggleMute === "function") {
         window.SoundEngine.toggleMute();
+      } else {
+        const currentMuted = localStorage.getItem("av_sound_muted") === "true";
+        syncAudioPreferences(!currentMuted);
       }
+      const audioState = syncAudioPreferences();
+      broadcastVolumeSyncToGame(audioState.muted, audioState.volume);
+    });
+  }
+
+  const globalSoundToggleBtn = document.getElementById("global-sound-toggle-btn");
+  if (globalSoundToggleBtn) {
+    globalSoundToggleBtn.addEventListener("click", () => {
+      setTimeout(() => {
+        const audioState = syncAudioPreferences();
+        broadcastVolumeSyncToGame(audioState.muted, audioState.volume);
+      }, 0);
     });
   }
 
@@ -2475,6 +2583,22 @@ document.addEventListener("DOMContentLoaded", () => {
       if (activeGameSession.handshakeTimeoutId) {
         clearTimeout(activeGameSession.handshakeTimeoutId);
         activeGameSession.handshakeTimeoutId = null;
+      }
+      return;
+    }
+
+    // Handle initial audio configuration request from child game iframe
+    if (type === "ARCADEVERSE_REQUEST_AUDIO_CONFIG") {
+      const audioState = syncAudioPreferences();
+      broadcastVolumeSyncToGame(audioState.muted, audioState.volume);
+      if (gameIframe && gameIframe.contentWindow) {
+        gameIframe.contentWindow.postMessage({
+          type: "ARCADEVERSE_AUDIO_CONFIG",
+          sessionToken: activeGameSession.token,
+          muted: audioState.muted,
+          volume: audioState.volume,
+          gain: audioState.muted ? 0 : audioState.volume
+        }, "*");
       }
       return;
     }
