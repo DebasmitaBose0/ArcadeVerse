@@ -23,12 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalGameTitle = document.getElementById("modal-game-title");
   const modalGameBadge = document.getElementById("modal-game-badge");
   const modalGameAuthor = document.getElementById("modal-game-author");
-  const gameIframe = document.getElementById("game-iframe");
+  let gameIframe = document.getElementById("game-iframe");
   const fullscreenBtn = document.getElementById("fullscreen-btn");
   const newTabBtn = document.getElementById("new-tab-btn");
   const reloadBtn = document.getElementById("reload-btn");
   const modalWindow = document.querySelector(".modal-window");
   const modalFrameWrapper = document.querySelector(".modal-frame-wrapper");
+  const gameLoaderSkeleton = document.getElementById("game-loader-skeleton");
   if (modalFrameWrapper) {
     modalFrameWrapper.classList.add("game-modal-body");
   }
@@ -45,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchQuery = "";
   let currentSort = "featured";
   let searchDebounceTimer = null;
+  const CATALOG_SORT_STORAGE_KEY = "arcadeverse_catalog_sort";
   const CATALOG_VIEW_STORAGE_KEY = "arcadeverse_catalog_view";
   let currentCatalogView = "grid";
   try {
@@ -53,7 +55,34 @@ document.addEventListener("DOMContentLoaded", () => {
       currentCatalogView = savedView;
     }
   } catch (_) {}
+  try {
+    const savedSort = localStorage.getItem(CATALOG_SORT_STORAGE_KEY);
+    if (savedSort && sortSelect && Array.from(sortSelect.options).some((o) => o.value === savedSort)) {
+      currentSort = savedSort;
+    }
+  } catch (_) {}
   let lastFocusedElement = null;
+
+  // Screen reader live region, used by the launch / catalog / pause announcements below
+  function announceToScreenReader(message) {
+    if (!message) return;
+    let liveRegion = document.getElementById("a11y-live-region");
+    if (!liveRegion) {
+      liveRegion = document.createElement("div");
+      liveRegion.id = "a11y-live-region";
+      liveRegion.className = "sr-only";
+      liveRegion.setAttribute("role", "status");
+      liveRegion.setAttribute("aria-live", "polite");
+      liveRegion.setAttribute("aria-atomic", "true");
+      document.body.appendChild(liveRegion);
+    }
+    // Clear first so a repeated message is announced again
+    liveRegion.textContent = "";
+    setTimeout(() => {
+      liveRegion.textContent = message;
+    }, 50);
+  }
+  window.announceToScreenReader = announceToScreenReader;
 
   // ========================================================
   // REBINDABLE KEYBOARD CONTROLS SUBSYSTEM (#516)
@@ -448,7 +477,8 @@ document.addEventListener("DOMContentLoaded", () => {
         /^arcadeverse_recently_played/,
         /^av_play_log/,
         /^av_session_/,
-        /^arcadeverse_telemetry/
+        /^arcadeverse_telemetry/,
+        /^arcadeverse_play_counts/
       ],
       // Priority 3: Non-critical UI state toggles & filters
       [
@@ -650,6 +680,86 @@ document.addEventListener("DOMContentLoaded", () => {
   function isFavorite(gameId) {
     return getFavorites().has(gameId);
   }
+
+  // ==========================================================================
+  // MOST PLAYED LEDGER (#434)
+  // A game counts as played once it has been open in the player for 10 seconds.
+  // Counts live only in this browser: { "<gameId>": <plays> } in localStorage.
+  // ==========================================================================
+  const PLAY_COUNTS_STORAGE_KEY = "arcadeverse_play_counts";
+  const PLAY_COUNT_AFTER_MS = 10000;
+  let playCountsStale = false;
+
+  function getPlayCounts() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(PLAY_COUNTS_STORAGE_KEY) || "{}");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+      const counts = {};
+      Object.keys(parsed).forEach((id) => {
+        const n = Number(parsed[id]);
+        if (Number.isFinite(n) && n > 0) counts[id] = Math.floor(n);
+      });
+      return counts;
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function countPlay(gameId) {
+    if (!gameId) return;
+    const counts = getPlayCounts();
+    counts[gameId] = (counts[gameId] || 0) + 1;
+    ArcadeStorageResilience.safeSetItem(PLAY_COUNTS_STORAGE_KEY, JSON.stringify(counts));
+    // Re-sort Most Played. While a game is open the grid waits for the modal to close,
+    // so it is not rebuilt behind a running game.
+    if (currentSort === "popularity") {
+      if (gameModal.classList.contains("active")) playCountsStale = true;
+      else renderGames();
+    }
+  }
+
+  // One timer for the game that is open. Closing the modal or opening another game cancels it,
+  // and it pauses while the tab is hidden so background time does not count as playing.
+  let playTimer = null;
+  let playTimerGameId = null;
+  let playTimerLeft = 0;
+  let playTimerStartedAt = 0;
+
+  function runPlayTimer() {
+    playTimerStartedAt = Date.now();
+    playTimer = setTimeout(() => {
+      const id = playTimerGameId;
+      playTimer = null;
+      playTimerGameId = null;
+      countPlay(id);
+    }, playTimerLeft);
+  }
+
+  function cancelPlayTimer() {
+    clearTimeout(playTimer);
+    playTimer = null;
+    playTimerGameId = null;
+  }
+
+  function armPlayTimer(gameId) {
+    cancelPlayTimer();
+    playTimerGameId = gameId;
+    playTimerLeft = PLAY_COUNT_AFTER_MS;
+    if (!document.hidden) runPlayTimer();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!playTimerGameId) return;
+    if (document.hidden) {
+      if (playTimer) {
+        clearTimeout(playTimer);
+        playTimer = null;
+        playTimerLeft = Math.max(0, playTimerLeft - (Date.now() - playTimerStartedAt));
+      }
+    } else if (!playTimer) {
+      runPlayTimer();
+    }
+  });
 
   function updateFavoritesBadge() {
     const favCount = getFavorites().size;
@@ -1095,6 +1205,7 @@ document.addEventListener("DOMContentLoaded", () => {
     gamesGrid.innerHTML = "";
     gamesGrid.classList.toggle("view-list", currentCatalogView === "list");
     const favs = getFavorites();
+    const playCounts = currentSort === "popularity" ? getPlayCounts() : null;
 
     const currentDataSet = GAMES_REGISTRY;
 
@@ -1193,6 +1304,28 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    function getDifficultyRank(game) {
+      if (!game) return 2;
+      const raw = String(game.difficulty || "").toLowerCase().trim();
+      if (raw.includes("easy") || raw.includes("beginner") || raw.includes("all skill") || raw.includes("casual")) return 1;
+      if (raw.includes("hard") || raw.includes("advanced") || raw.includes("expert") || raw.includes("survival")) return 3;
+      if (raw.includes("medium") || raw.includes("intermediate")) return 2;
+
+      const text = (String(game.title || "") + " " + String(game.category || "") + " " + (Array.isArray(game.tags) ? game.tags.join(" ") : "") + " " + String(game.description || "")).toLowerCase();
+      if (text.includes("easy") || text.includes("casual") || text.includes("relaxing") || text.includes("simple") || text.includes("calm") || text.includes("clicker")) return 1;
+      if (text.includes("expert") || text.includes("hardcore") || text.includes("insane") || text.includes("complex") || text.includes("rpg") || text.includes("hard") || text.includes("survival") || text.includes("roguelike")) return 3;
+      return 2;
+    }
+
+    function getGameReleaseTime(game) {
+      if (!game) return 0;
+      if (game.releaseDate) {
+        const t = new Date(game.releaseDate).getTime();
+        if (!isNaN(t)) return t;
+      }
+      return 0;
+    }
+
     // Apply Sorting
     filtered.sort((a, b) => {
       if (currentSort === "az") {
@@ -1218,6 +1351,16 @@ document.addEventListener("DOMContentLoaded", () => {
         const diffA = getDifficultyRank(a);
         const diffB = getDifficultyRank(b);
         if (diffB !== diffA) return diffB - diffA;
+        return a.title.localeCompare(b.title);
+      } else if (currentSort === "popularity") {
+        const playsDiff = (playCounts[b.id] || 0) - (playCounts[a.id] || 0);
+        if (playsDiff !== 0) return playsDiff;
+        // same count (or none yet): fall back to the Featured order
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        const rA = (window.GameRatings && window.GameRatings.ratings[a.id]) || (a.stars ? (a.stars / 10) : 5.0);
+        const rB = (window.GameRatings && window.GameRatings.ratings[b.id]) || (b.stars ? (b.stars / 10) : 5.0);
+        if (rB !== rA) return rB - rA;
         return a.title.localeCompare(b.title);
       } else {
         // "featured": featured items first, then by rating / title
@@ -1524,6 +1667,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const displayScore = userRating ? Number(userRating).toFixed(1) : (game.stars ? (game.stars / 10).toFixed(1) : "5.0");
       const currentStar = userRating || Math.min(5, Math.max(1, Math.round((game.stars || 25) / 10)));
 
+      const plays = playCounts ? playCounts[game.id] || 0 : 0;
+      const playsBadgeHtml = plays > 0 ? `
+        <span class="game-plays-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          ${plays} Play${plays === 1 ? "" : "s"}
+        </span>` : "";
+
       const isHalloween = isHalloweenGame(game);
       const halloweenBadgeHtml = isHalloween ? `
         <span class="badge-halloween-special" title="Halloween Special Games">
@@ -1544,7 +1694,7 @@ document.addEventListener("DOMContentLoaded", () => {
               <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
             </svg>
           </button>
-          <div class="game-icon">${iconHtml}</div>
+          <div class="game-icon">${iconHtml}</div>${playsBadgeHtml}
         </div>
         <div class="game-card-body">
           <h3 class="game-card-title">${safeTitle}${halloweenTitleBadge}</h3>
@@ -1656,7 +1806,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Assistive Screen Reader Notification for Catalog Filter/Search Updates (#513)
     if (typeof announceToScreenReader === "function") {
-      const count = finalResults.length;
+      const count = filtered.length;
       let filterDesc = [];
       if (currentCategory && currentCategory !== "all") filterDesc.push(`category "${currentCategory}"`);
       if (searchQuery) filterDesc.push(`matching "${searchQuery}"`);
@@ -1678,6 +1828,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let iframeLoadTimeout = null;
   let iframeLoadSucceeded = false;
 
+  function showGameLoader() {
+    if (gameLoaderSkeleton) gameLoaderSkeleton.classList.add("active");
+  }
+
+  function hideGameLoader() {
+    if (gameLoaderSkeleton) gameLoaderSkeleton.classList.remove("active");
+  }
+
   function resetIframeBoundary() {
     if (iframeLoadTimeout) {
       clearTimeout(iframeLoadTimeout);
@@ -1690,6 +1848,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function triggerModalErrorBoundary(gameObj) {
     if (iframeLoadSucceeded) return;
+    hideGameLoader();
     if (gameIframe) gameIframe.style.display = "none";
     let errorBoundary = document.getElementById("modal-error-boundary");
     if (!errorBoundary) {
@@ -1730,6 +1889,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resetIframeBoundary();
         iframeLoadSucceeded = false;
         if (gameIframe && gameObj) {
+          showGameLoader();
           gameIframe.src = gameObj.path;
           startIframeTimeout(gameObj);
         }
@@ -1868,7 +2028,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3500);
   }
 
-  // Bind iframe load listener once at root level to ensure 100% reliable load detection
+  // Bind the load / error listeners on the current game iframe. closeGameModal swaps in a fresh
+  // iframe node, so this runs again for each new one.
+  function bindGameIframeListeners() {
   if (gameIframe) {
     gameIframe.addEventListener("load", () => {
       // Ignore blanking resets
@@ -1877,6 +2039,7 @@ document.addEventListener("DOMContentLoaded", () => {
       iframeLoadSucceeded = true;
       resetIframeBoundary();
       gameIframe.classList.add("loaded");
+      hideGameLoader();
       guardIframeTouchInteractions();
 
       // Establish cryptographic session handshake with child game frame
@@ -1907,6 +2070,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  }
+  bindGameIframeListeners();
 
   // =========================================================================
   // TOP-LEVEL NAVIGATION GUARD & ROGUE SCRIPT PROTECTION (#492)
@@ -1976,6 +2141,7 @@ document.addEventListener("DOMContentLoaded", () => {
     lastAnnouncedScore = 0;
     lastScoreAnnouncementTime = Date.now();
     announceToScreenReader(`Launching ${game.title}. Category: ${game.category}. Built by ${game.author}.`);
+    showGameLoader();
     startIframeTimeout(game);
 
     // Storage Isolation Bridge: Pass gameId via URL parameter so SDK attaches namespaced proxy
@@ -2010,6 +2176,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.ArcadeRecent.recordPlayed(game.id, game.title, game.category);
     }
     window.dispatchEvent(new CustomEvent("arcadeverse:game-launched", { detail: game }));
+    armPlayTimer(game.id);
 
     // Mount animation class to prevent visual tearing
     modalFrameWrapper.classList.add("is-mounting");
@@ -2167,8 +2334,11 @@ document.addEventListener("DOMContentLoaded", () => {
     hideLandscapePrompt();
     activeGame = null;
     isGameSessionActive = false;
+    // Stop the 15s load timer so a game closed mid load does not raise the error screen later
+    resetIframeBoundary();
     gameModal.classList.remove("active");
     gameModal.setAttribute("aria-hidden", "true");
+    hideGameLoader();
 
     // Standardized Game Lifecycle Bridge: Dispatch teardown & pause events before unmounting iframe
     try {
@@ -2233,6 +2403,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Safely blank out iframe after a 100ms grace period to allow games to close AudioContexts and stop RAF loops
     const currentFrame = gameIframe;
     setTimeout(() => {
+      // Another game was opened during the grace period, leave its frame alone
+      if (activeGame) return;
       try {
         if (currentFrame && currentFrame.contentWindow) {
           currentFrame.contentWindow.location.replace("about:blank");
@@ -2253,16 +2425,18 @@ document.addEventListener("DOMContentLoaded", () => {
           newIframe.setAttribute("title", currentFrame.getAttribute("title") || "Arcade Game Screen");
           newIframe.setAttribute("loading", "lazy");
           newIframe.setAttribute("allow", "gamepad; autoplay; fullscreen");
+          if (currentFrame.hasAttribute("sandbox")) newIframe.setAttribute("sandbox", currentFrame.getAttribute("sandbox"));
           newIframe.src = "about:blank";
           parent.replaceChild(newIframe, currentFrame);
-          // Re-bind global reference
-          if (document.getElementById("game-iframe")) {
-            // Updated DOM element cleanly mounted
-          }
+          // The reference and listeners must follow the new node, otherwise the next game
+          // is loaded into a detached iframe and never shows
+          gameIframe = newIframe;
+          bindGameIframeListeners();
         }
       } catch (_) {}
     }, 100);
 
+    cancelPlayTimer();
     document.body.style.overflow = "";
     document.body.style.overscrollBehavior = "";
     document.body.classList.remove("modal-launching-in-progress");
@@ -2271,6 +2445,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (gameModal) gameModal.classList.remove("fullscreen-mode");
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    }
+    if (playCountsStale) {
+      playCountsStale = false;
+      renderGames();
+      // renderGames rebuilt the cards, so the Play button the game was opened from is gone
+      if (lastFocusedElement && !lastFocusedElement.isConnected && lastFocusedElement.dataset.id) {
+        lastFocusedElement = gamesGrid.querySelector(`.btn-play-trigger[data-id="${lastFocusedElement.dataset.id}"]`);
+      }
     }
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
