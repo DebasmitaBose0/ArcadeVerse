@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalGameTitle = document.getElementById("modal-game-title");
   const modalGameBadge = document.getElementById("modal-game-badge");
   const modalGameAuthor = document.getElementById("modal-game-author");
-  const gameIframe = document.getElementById("game-iframe");
+  let gameIframe = document.getElementById("game-iframe");
   const fullscreenBtn = document.getElementById("fullscreen-btn");
   const newTabBtn = document.getElementById("new-tab-btn");
   const reloadBtn = document.getElementById("reload-btn");
@@ -1889,7 +1889,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 3500);
   }
 
-  // Bind iframe load listener once at root level to ensure 100% reliable load detection
+  // Bind the load / error listeners on the current game iframe. closeGameModal swaps in a fresh
+  // iframe node, so this runs again for each new one.
+  function bindGameIframeListeners() {
   if (gameIframe) {
     gameIframe.addEventListener("load", () => {
       // Ignore blanking resets
@@ -1928,6 +1930,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  }
+  bindGameIframeListeners();
 
   // =========================================================================
   // TOP-LEVEL NAVIGATION GUARD & ROGUE SCRIPT PROTECTION (#492)
@@ -2188,6 +2192,8 @@ document.addEventListener("DOMContentLoaded", () => {
     hideLandscapePrompt();
     activeGame = null;
     isGameSessionActive = false;
+    // Stop the 15s load timer so a game closed mid load does not raise the error screen later
+    resetIframeBoundary();
     gameModal.classList.remove("active");
     gameModal.setAttribute("aria-hidden", "true");
 
@@ -2254,6 +2260,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Safely blank out iframe after a 100ms grace period to allow games to close AudioContexts and stop RAF loops
     const currentFrame = gameIframe;
     setTimeout(() => {
+      // Another game was opened during the grace period, leave its frame alone
+      if (activeGame) return;
       try {
         if (currentFrame && currentFrame.contentWindow) {
           currentFrame.contentWindow.location.replace("about:blank");
@@ -2274,12 +2282,13 @@ document.addEventListener("DOMContentLoaded", () => {
           newIframe.setAttribute("title", currentFrame.getAttribute("title") || "Arcade Game Screen");
           newIframe.setAttribute("loading", "lazy");
           newIframe.setAttribute("allow", "gamepad; autoplay; fullscreen");
+          if (currentFrame.hasAttribute("sandbox")) newIframe.setAttribute("sandbox", currentFrame.getAttribute("sandbox"));
           newIframe.src = "about:blank";
           parent.replaceChild(newIframe, currentFrame);
-          // Re-bind global reference
-          if (document.getElementById("game-iframe")) {
-            // Updated DOM element cleanly mounted
-          }
+          // The reference and listeners must follow the new node, otherwise the next game
+          // is loaded into a detached iframe and never shows
+          gameIframe = newIframe;
+          bindGameIframeListeners();
         }
       } catch (_) {}
     }, 100);
