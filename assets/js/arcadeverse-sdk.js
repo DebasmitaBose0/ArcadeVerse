@@ -379,10 +379,31 @@
   }
 
 
-  var currentAudioConfig = {
-    muted: false,
-    volume: 1.0
-  };
+  var currentAudioConfig = (function () {
+    var muted = false;
+    var volume = 1.0;
+    try {
+      if (typeof localStorage !== "undefined") {
+        var rawMuted = localStorage.getItem("av_sound_muted");
+        if (rawMuted === null) rawMuted = localStorage.getItem("arcadeverse_muted");
+        if (rawMuted !== null) muted = rawMuted === "true";
+        var rawVol = parseFloat(localStorage.getItem("av_master_volume") || localStorage.getItem("arcadeverse_master_volume"));
+        if (!isNaN(rawVol)) volume = Math.max(0, Math.min(1, rawVol));
+      }
+      if (typeof window !== "undefined" && window.location && window.location.search) {
+        var p = new URLSearchParams(window.location.search);
+        if (p.has("av_muted")) {
+          var pm = p.get("av_muted");
+          muted = pm === "1" || pm === "true";
+        }
+        if (p.has("av_vol")) {
+          var pv = parseFloat(p.get("av_vol"));
+          if (!isNaN(pv)) volume = Math.max(0, Math.min(1, pv));
+        }
+      }
+    } catch (_) {}
+    return { muted: muted, volume: volume };
+  })();
 
   /**
    * Internal message listener for parent hub commands
@@ -462,9 +483,17 @@
         }
         break;
 
+      case "ARCADEVERSE_VOLUME_SYNC":
       case "ARCADEVERSE_AUDIO_CONFIG":
         if (typeof data.muted === "boolean") currentAudioConfig.muted = data.muted;
         if (typeof data.volume === "number") currentAudioConfig.volume = data.volume;
+        if (typeof data.gain === "number" && data.muted === undefined) currentAudioConfig.volume = data.gain;
+        try {
+          localStorage.setItem("av_sound_muted", currentAudioConfig.muted ? "true" : "false");
+          localStorage.setItem("av_master_volume", String(currentAudioConfig.volume));
+          localStorage.setItem("arcadeverse_muted", currentAudioConfig.muted ? "true" : "false");
+          localStorage.setItem("arcadeverse_master_volume", String(currentAudioConfig.volume));
+        } catch (_) {}
         applyMasterGainVolume();
         for (var a = 0; a < registeredAudioContexts.length; a++) {
           try {
@@ -496,6 +525,31 @@
     }
   }
 
+  function setGainImmediately(gainAudioParam, targetValue, ctx) {
+    if (!gainAudioParam) return;
+    try {
+      var now = ctx && typeof ctx.currentTime === "number" ? ctx.currentTime : 0;
+      if (typeof gainAudioParam.cancelScheduledValues === "function") {
+        gainAudioParam.cancelScheduledValues(now);
+      }
+      if (typeof gainAudioParam.setValueAtTime === "function") {
+        gainAudioParam.setValueAtTime(targetValue, now);
+      }
+      gainAudioParam.value = targetValue;
+    } catch (_) {
+      try {
+        gainAudioParam.value = targetValue;
+      } catch (_) {}
+    }
+  }
+
+  function scaleMasterGainNode(gainNode) {
+    if (!gainNode || !gainNode.gain) return gainNode;
+    var targetGain = currentAudioConfig.muted ? 0 : currentAudioConfig.volume;
+    setGainImmediately(gainNode.gain, targetGain, gainNode.context);
+    return gainNode;
+  }
+
   /**
    * Applies hub volume and mute setting to all registered master GainNodes
    */
@@ -505,7 +559,7 @@
       try {
         var gainNode = registeredGainNodes[i];
         if (gainNode && gainNode.gain) {
-          gainNode.gain.setValueAtTime(targetGain, 0);
+          setGainImmediately(gainNode.gain, targetGain, gainNode.context);
         }
       } catch (_) {}
     }
@@ -576,11 +630,28 @@
     if (typeof window !== "undefined") {
       window.addEventListener("message", handleParentMessage, false);
 
-      // Check localStorage for persisted volume on startup
+      // Check localStorage and URL params for persisted volume on startup
       try {
-        var isMuted = localStorage.getItem("arcadeverse_muted") === "true";
-        var masterVol = parseFloat(localStorage.getItem("arcadeverse_master_volume"));
-        if (!isNaN(masterVol)) currentAudioConfig.volume = masterVol;
+        var params = (typeof window !== "undefined" && window.location && window.location.search)
+          ? new URLSearchParams(window.location.search)
+          : null;
+
+        var isMuted = false;
+        var rawMuted = localStorage.getItem("av_sound_muted");
+        if (rawMuted === null) rawMuted = localStorage.getItem("arcadeverse_muted");
+        if (rawMuted !== null) isMuted = rawMuted === "true";
+        if (params && params.has("av_muted")) {
+          var pm = params.get("av_muted");
+          isMuted = pm === "1" || pm === "true";
+        }
+
+        var masterVol = parseFloat(localStorage.getItem("av_master_volume") || localStorage.getItem("arcadeverse_master_volume"));
+        if (params && params.has("av_vol")) {
+          var pv = parseFloat(params.get("av_vol"));
+          if (!isNaN(pv)) masterVol = pv;
+        }
+
+        if (!isNaN(masterVol)) currentAudioConfig.volume = Math.max(0, Math.min(1, masterVol));
         currentAudioConfig.muted = isMuted;
       } catch (_) {}
 
@@ -608,7 +679,70 @@
         }, true);
       }
 
+      // Universal AudioContext & Master Gain Shield
+      // Ensures games initializing local AudioContext start muted if hub is muted
+      installAudioShield();
+
       isInitialized = true;
+    }
+  }
+
+  function installAudioShield() {
+    if (typeof window === "undefined") return;
+
+    var NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+    if (NativeAudioContext && !NativeAudioContext._avPatched) {
+      function PatchedAudioContext() {
+        var args = Array.prototype.slice.call(arguments);
+        var ctx;
+        if (args.length > 0) {
+          ctx = new (Function.prototype.bind.apply(NativeAudioContext, [null].concat(args)))();
+        } else {
+          ctx = new NativeAudioContext();
+        }
+
+        if (registeredAudioContexts.indexOf(ctx) === -1) {
+          registeredAudioContexts.push(ctx);
+        }
+
+        if (currentAudioConfig.muted && ctx.state === "running") {
+          ctx.suspend().catch(function () {});
+        }
+
+        var origResume = ctx.resume;
+        ctx.resume = function () {
+          if (currentAudioConfig.muted) {
+            return Promise.resolve();
+          }
+          return origResume.apply(ctx, arguments);
+        };
+
+        return ctx;
+      }
+
+      PatchedAudioContext.prototype = NativeAudioContext.prototype;
+      PatchedAudioContext._avPatched = true;
+
+      try {
+        if (window.AudioContext) window.AudioContext = PatchedAudioContext;
+        if (window.webkitAudioContext) window.webkitAudioContext = PatchedAudioContext;
+      } catch (_) {}
+    }
+
+    if (typeof window.AudioNode !== "undefined" && window.AudioNode.prototype && !window.AudioNode.prototype._avConnectPatched) {
+      var origConnect = window.AudioNode.prototype.connect;
+      window.AudioNode.prototype.connect = function (target) {
+        var isGain = (typeof window.GainNode !== "undefined" && this instanceof window.GainNode) ||
+                     (this && this.gain && typeof this.gain.setValueAtTime === "function");
+        if (isGain && target && this.context && (target === this.context.destination)) {
+          if (registeredGainNodes.indexOf(this) === -1) {
+            registeredGainNodes.push(this);
+          }
+          scaleMasterGainNode(this);
+        }
+        return origConnect.apply(this, arguments);
+      };
+      window.AudioNode.prototype._avConnectPatched = true;
     }
   }
 
@@ -659,14 +793,55 @@
     },
 
     /**
-     * Track an AudioContext for automatic suspension/closure on teardown
+     * Track an AudioContext for automatic suspension/closure on teardown and mute synchronization
      * @param {AudioContext} ctx
      */
     trackAudioContext: function (ctx) {
-      if (ctx && registeredAudioContexts.indexOf(ctx) === -1) {
-        registeredAudioContexts.push(ctx);
+      if (ctx) {
+        if (registeredAudioContexts.indexOf(ctx) === -1) {
+          registeredAudioContexts.push(ctx);
+        }
+        if (!this._trackedAudioContexts) this._trackedAudioContexts = [];
+        if (this._trackedAudioContexts.indexOf(ctx) === -1) {
+          this._trackedAudioContexts.push(ctx);
+        }
+        if (currentAudioConfig.muted && ctx.state === "running") {
+          ctx.suspend().catch(function () {});
+        }
       }
       return ctx;
+    },
+
+    /**
+     * Alias for trackAudioContext
+     */
+    registerAudioContext: function (ctx) {
+      return this.trackAudioContext(ctx);
+    },
+
+    /**
+     * Registers and scales any master GainNode to match the hub volume and mute state
+     * @param {GainNode} gainNode
+     * @returns {GainNode}
+     */
+    registerMasterGainNode: function (gainNode) {
+      if (gainNode && registeredGainNodes.indexOf(gainNode) === -1) {
+        registeredGainNodes.push(gainNode);
+      }
+      if (gainNode) {
+        scaleMasterGainNode(gainNode);
+        if (gainNode.context) {
+          this.trackAudioContext(gainNode.context);
+        }
+      }
+      return gainNode;
+    },
+
+    /**
+     * Alias for registerMasterGainNode
+     */
+    registerGainNode: function (gainNode) {
+      return this.registerMasterGainNode(gainNode);
     },
 
     /**
@@ -678,7 +853,7 @@
     createMasterGain: function (ctx) {
       if (!ctx) return null;
       var gainNode = ctx.createGain();
-      gainNode.gain.setValueAtTime(currentAudioConfig.muted ? 0 : currentAudioConfig.volume, 0);
+      scaleMasterGainNode(gainNode);
       gainNode.connect(ctx.destination);
       if (registeredGainNodes.indexOf(gainNode) === -1) {
         registeredGainNodes.push(gainNode);
@@ -1027,26 +1202,38 @@
       var masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
 
-      var currentVolume = 0.5;
-      var isMuted = false;
+      var currentVolume = currentAudioConfig.volume;
+      var isMuted = currentAudioConfig.muted;
+
+      if (registeredGainNodes.indexOf(masterGain) === -1) {
+        registeredGainNodes.push(masterGain);
+      }
+      this.trackAudioContext(ctx);
+      scaleMasterGainNode(masterGain);
 
       var applyGain = function () {
         var targetGain = isMuted ? 0 : currentVolume;
         if (ctx.state === 'running') {
-          masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
-          masterGain.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.05);
+          try {
+            masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
+            masterGain.gain.linearRampToValueAtTime(targetGain, ctx.currentTime + 0.05);
+          } catch (_) {
+            setGainImmediately(masterGain.gain, targetGain, ctx);
+          }
         } else {
-          masterGain.gain.value = targetGain;
+          setGainImmediately(masterGain.gain, targetGain, ctx);
         }
         if (typeof onVolumeChange === 'function') {
           onVolumeChange(currentVolume, isMuted);
         }
       };
 
+      applyGain();
+
       // Listen for parent hub audio broadcasts
       var handleMessage = function (e) {
         if (!e || !e.data) return;
-        if (e.data.type === 'ARCADEVERSE_AUDIO_CONFIG') {
+        if (e.data.type === 'ARCADEVERSE_VOLUME_SYNC' || e.data.type === 'ARCADEVERSE_AUDIO_CONFIG') {
           if (typeof e.data.muted === 'boolean') isMuted = e.data.muted;
           if (typeof e.data.volume === 'number') currentVolume = Math.max(0, Math.min(1, e.data.volume));
           applyGain();
@@ -1083,6 +1270,8 @@
         },
         dispose: function () {
           window.removeEventListener('message', handleMessage);
+          var idx = registeredGainNodes.indexOf(masterGain);
+          if (idx !== -1) registeredGainNodes.splice(idx, 1);
           try {
             masterGain.disconnect();
           } catch (_e) {}
