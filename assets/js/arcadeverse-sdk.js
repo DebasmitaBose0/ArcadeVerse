@@ -444,6 +444,24 @@
         performAutomaticCleanup();
         break;
 
+      case "ARCADEVERSE_GAMEPAD_KEY":
+        if (data.eventType && data.key) {
+          try {
+            var keyCode = data.keyCode || 0;
+            var keyEvent = new KeyboardEvent(data.eventType, {
+              key: data.key,
+              code: data.code || data.key,
+              keyCode: keyCode,
+              which: keyCode,
+              bubbles: true,
+              cancelable: true
+            });
+            window.dispatchEvent(keyEvent);
+            document.dispatchEvent(keyEvent);
+          } catch (_) {}
+        }
+        break;
+
       case "ARCADEVERSE_AUDIO_CONFIG":
         if (typeof data.muted === "boolean") currentAudioConfig.muted = data.muted;
         if (typeof data.volume === "number") currentAudioConfig.volume = data.volume;
@@ -715,6 +733,20 @@
     postScore: function (score) {
       securePostToParent("ARCADEVERSE_GAME_SCORE", {
         score: Number(score) || 0
+      });
+    },
+
+    /**
+     * Trigger controller haptic rumble on connected physical gamepads (#515)
+     * @param {number} [durationMs=150] Duration of vibration in milliseconds
+     * @param {number} [strongMagnitude=0.6] Low-frequency motor intensity (0.0 to 1.0)
+     * @param {number} [weakMagnitude=0.4] High-frequency motor intensity (0.0 to 1.0)
+     */
+    triggerGamepadRumble: function (durationMs, strongMagnitude, weakMagnitude) {
+      securePostToParent("ARCADEVERSE_GAMEPAD_RUMBLE", {
+        duration: typeof durationMs === "number" ? durationMs : 150,
+        strong: typeof strongMagnitude === "number" ? strongMagnitude : 0.6,
+        weak: typeof weakMagnitude === "number" ? weakMagnitude : 0.4
       });
     },
 
@@ -1177,6 +1209,45 @@
         return window.ArcadeAudio;
       }
       return null;
+    },
+
+    // ========================================================
+    // UNIVERSAL HIGH-DPI RETINA CANVAS RESIZER (#558)
+    // Ensures pixel-crisp rendering on 2x/3x Retina & 4K displays
+    // ========================================================
+    /**
+     * Initializes or resizes an HTML5 Canvas for High-DPI / Retina displays.
+     * Scales physical canvas resolution by devicePixelRatio while preserving logical CSS dimensions.
+     * @param {HTMLCanvasElement} canvas
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {number} [logicalWidth] - Optional design width (defaults to canvas.width or clientWidth)
+     * @param {number} [logicalHeight] - Optional design height (defaults to canvas.height or clientHeight)
+     * @returns {{ dpr: number, logicalWidth: number, logicalHeight: number }}
+     */
+    initRetinaCanvas: function (canvas, ctx, logicalWidth, logicalHeight) {
+      if (!canvas || !ctx) return { dpr: 1, logicalWidth: 0, logicalHeight: 0 };
+
+      var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+      var w = logicalWidth || canvas.clientWidth || canvas.width || 800;
+      var h = logicalHeight || canvas.clientHeight || canvas.height || 600;
+
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+
+      // Reset and scale coordinate matrix
+      if (typeof ctx.setTransform === 'function') {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      } else if (typeof ctx.scale === 'function') {
+        ctx.scale(dpr, dpr);
+      }
+
+      return {
+        dpr: dpr,
+        logicalWidth: w,
+        logicalHeight: h
+      };
     }
   };
 });
