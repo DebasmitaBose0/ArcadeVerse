@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const reloadBtn = document.getElementById("reload-btn");
   const modalWindow = document.querySelector(".modal-window");
   const modalFrameWrapper = document.querySelector(".modal-frame-wrapper");
+  const gameLoaderSkeleton = document.getElementById("game-loader-skeleton");
   if (modalFrameWrapper) {
     modalFrameWrapper.classList.add("game-modal-body");
   }
@@ -1699,6 +1700,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let iframeLoadTimeout = null;
   let iframeLoadSucceeded = false;
 
+  function showGameLoader() {
+    if (gameLoaderSkeleton) gameLoaderSkeleton.classList.add("active");
+  }
+
+  function hideGameLoader() {
+    if (gameLoaderSkeleton) gameLoaderSkeleton.classList.remove("active");
+  }
+
   function resetIframeBoundary() {
     if (iframeLoadTimeout) {
       clearTimeout(iframeLoadTimeout);
@@ -1711,6 +1720,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function triggerModalErrorBoundary(gameObj) {
     if (iframeLoadSucceeded) return;
+    hideGameLoader();
     if (gameIframe) gameIframe.style.display = "none";
     let errorBoundary = document.getElementById("modal-error-boundary");
     if (!errorBoundary) {
@@ -1751,6 +1761,7 @@ document.addEventListener("DOMContentLoaded", () => {
         resetIframeBoundary();
         iframeLoadSucceeded = false;
         if (gameIframe && gameObj) {
+          showGameLoader();
           gameIframe.src = gameObj.path;
           startIframeTimeout(gameObj);
         }
@@ -1900,6 +1911,7 @@ document.addEventListener("DOMContentLoaded", () => {
       iframeLoadSucceeded = true;
       resetIframeBoundary();
       gameIframe.classList.add("loaded");
+      hideGameLoader();
       guardIframeTouchInteractions();
 
       // Establish cryptographic session handshake with child game frame
@@ -2001,6 +2013,7 @@ document.addEventListener("DOMContentLoaded", () => {
     lastAnnouncedScore = 0;
     lastScoreAnnouncementTime = Date.now();
     announceToScreenReader(`Launching ${game.title}. Category: ${game.category}. Built by ${game.author}.`);
+    showGameLoader();
     startIframeTimeout(game);
 
     // Storage Isolation Bridge: Pass gameId via URL parameter so SDK attaches namespaced proxy
@@ -2196,6 +2209,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resetIframeBoundary();
     gameModal.classList.remove("active");
     gameModal.setAttribute("aria-hidden", "true");
+    hideGameLoader();
 
     // Standardized Game Lifecycle Bridge: Dispatch teardown & pause events before unmounting iframe
     try {
