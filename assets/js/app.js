@@ -2302,7 +2302,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let modalLaunchCooldownTimer = null;
   let closeModalCleanupTimer = null;
 
-  // Screen Wake Lock Controller (#723)
+  // Screen Wake Lock Controller (#700, #723)
   // Keeps screen awake during active gameplay sessions on mobile devices
   let screenWakeLock = null;
 
@@ -2337,6 +2337,10 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       releaseScreenWakeLock();
     }
+  });
+
+  window.addEventListener("pagehide", () => {
+    releaseScreenWakeLock();
   });
 
   // Modal Handlers
@@ -2618,6 +2622,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeGameModal(isFromPopState = false) {
     if (!gameModal || (!gameModal.classList.contains("active") && !activeGame)) return;
+    releaseScreenWakeLock();
     const closedGame = activeGame;
     const closedGameTitle = closedGame ? closedGame.title : "Game";
     const closedGameId = closedGame ? closedGame.id : null;
