@@ -5429,56 +5429,110 @@ if (typeof window !== 'undefined' && (('ontouchstart' in window) || (navigator.m
 
 
 // ========================================================
-// IN-MODAL VOLUME SLIDER & CROSS-IFRAME BROADCASTER (#735)
+// MULTI-SELECT DYNAMIC TAG FILTERING ENGINE (#738)
 // ========================================================
 (() => {
-  let masterVolume = 1.0;
-  try {
-    const saved = localStorage.getItem('arcadeverse_master_volume');
-    if (saved !== null) {
-      const parsed = parseFloat(saved);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
-        masterVolume = parsed;
+  const activeTags = new Set();
+
+  function updateTagFilterMatches() {
+    const games = Array.isArray(window.GAMES_REGISTRY) ? window.GAMES_REGISTRY : [];
+    const countBadge = document.getElementById('tag-filter-count');
+    if (!countBadge) return;
+
+    if (activeTags.size === 0) {
+      countBadge.style.display = 'none';
+      return;
+    }
+
+    let matchCount = 0;
+    games.forEach(game => {
+      let matchesAll = true;
+      if (activeTags.has('top-rated')) {
+        const rating = typeof getGameAverageRating === 'function' ? getGameAverageRating(game.id) : (game.rating || 5);
+        if (rating < 4.5) matchesAll = false;
       }
-    }
-  } catch (_) {}
+      if (activeTags.has('featured')) {
+        if (!game.featured && !game.badge) matchesAll = false;
+      }
+      if (activeTags.has('favorites')) {
+        const isFav = typeof isFavorite === 'function' ? isFavorite(game.id) : false;
+        if (!isFav) matchesAll = false;
+      }
+      if (activeTags.has('touch')) {
+        const hasTouchTag = Array.isArray(game.tags) && game.tags.some(t => String(t).toLowerCase().includes('touch') || String(t).toLowerCase().includes('mobile'));
+        if (!hasTouchTag && !game.touchControls) matchesAll = false;
+      }
+      if (matchesAll) matchCount++;
+    });
 
-  function broadcastMasterVolume(vol) {
-    masterVolume = vol;
-    try {
-      localStorage.setItem('arcadeverse_master_volume', vol.toString());
-    } catch (_) {}
+    countBadge.textContent = `${matchCount} match${matchCount === 1 ? '' : 'es'}`;
+    countBadge.style.display = 'inline-block';
+  }
 
-    const gameIframe = document.getElementById('game-iframe');
-    if (gameIframe && gameIframe.contentWindow) {
-      gameIframe.contentWindow.postMessage({
-        type: 'ARCADEVERSE_SET_VOLUME',
-        volume: vol
-      }, '*');
-    }
+  function applyTagFilterToGrid() {
+    const cards = document.querySelectorAll('.game-card');
+    cards.forEach(card => {
+      const gameId = card.getAttribute('data-game-id');
+      const game = (Array.isArray(window.GAMES_REGISTRY) ? window.GAMES_REGISTRY : []).find(g => g.id === gameId);
+      if (!game) return;
+
+      let passesTags = true;
+      if (activeTags.has('top-rated')) {
+        const rating = typeof getGameAverageRating === 'function' ? getGameAverageRating(game.id) : (game.rating || 5);
+        if (rating < 4.5) passesTags = false;
+      }
+      if (activeTags.has('featured')) {
+        if (!game.featured && !game.badge) passesTags = false;
+      }
+      if (activeTags.has('favorites')) {
+        const isFav = typeof isFavorite === 'function' ? isFavorite(game.id) : false;
+        if (!isFav) passesTags = false;
+      }
+      if (activeTags.has('touch')) {
+        const hasTouchTag = Array.isArray(game.tags) && game.tags.some(t => String(t).toLowerCase().includes('touch') || String(t).toLowerCase().includes('mobile'));
+        if (!hasTouchTag && !game.touchControls) passesTags = false;
+      }
+
+      if (!passesTags) {
+        card.style.display = 'none';
+      }
+    });
+
+    updateTagFilterMatches();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    const slider = document.getElementById('modal-volume-slider');
-    const label = document.getElementById('volume-percentage-label');
-    if (slider) {
-      slider.value = Math.round(masterVolume * 100);
-      if (label) label.textContent = `${Math.round(masterVolume * 100)}%`;
+    const pills = document.querySelectorAll('.tag-pill');
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        const tag = pill.getAttribute('data-tag');
+        if (activeTags.has(tag)) {
+          activeTags.delete(tag);
+          pill.classList.remove('active');
+          pill.setAttribute('aria-pressed', 'false');
+        } else {
+          activeTags.add(tag);
+          pill.classList.add('active');
+          pill.setAttribute('aria-pressed', 'true');
+        }
 
-      slider.addEventListener('input', (e) => {
-        const val = parseInt(e.target.value, 10);
-        const norm = Math.max(0, Math.min(100, val)) / 100;
-        if (label) label.textContent = `${val}%`;
-        broadcastMasterVolume(norm);
+        if (typeof filterGames === 'function') {
+          filterGames();
+        }
+        applyTagFilterToGrid();
       });
-    }
+    });
 
-    // Re-broadcast volume whenever a game finishes loading in iframe
-    const iframe = document.getElementById('game-iframe');
-    if (iframe) {
-      iframe.addEventListener('load', () => {
-        setTimeout(() => broadcastMasterVolume(masterVolume), 200);
-      });
+    // Re-apply tag filter after catalog re-renders
+    const originalFilterGames = window.filterGames;
+    if (typeof originalFilterGames === 'function') {
+      window.filterGames = function (...args) {
+        const res = originalFilterGames.apply(this, args);
+        if (activeTags.size > 0) {
+          applyTagFilterToGrid();
+        }
+        return res;
+      };
     }
   });
 })();
