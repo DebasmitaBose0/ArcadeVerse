@@ -1,0 +1,29 @@
+/**
+ * ArcadeVerse - Virtual Boy Dual-Tone Red & Black Theme
+ * High-contrast 1995 stereoscopic red aesthetic
+ */
+
+:root[data-theme="virtual-boy"] {
+  --bg-primary: #000000;
+  --bg-surface: #0a0000;
+  --bg-card: #150000;
+  --text-primary: #ff0000;
+  --text-secondary: #b00000;
+  --text-muted: #5a0000;
+  --border-color: #b00000;
+  --accent: #ff0000;
+  --accent-glow: 0 0 10px rgba(255, 0, 0, 0.7);
+  --anaglyph-shadow: 2px 0 0 #ff0000, -2px 0 0 #5a0000;
+}
+
+[data-theme="virtual-boy"] .card,
+[data-theme="virtual-boy"] .modal {
+  border: 1px solid #b00000;
+  box-shadow: 0 0 8px rgba(176, 0, 0, 0.4);
+}
+
+[data-theme="virtual-boy"] h1,
+[data-theme="virtual-boy"] h2,
+[data-theme="virtual-boy"] h3 {
+  text-shadow: 2px 0 0 #ff0000, -2px 0 0 #5a0000;
+}
