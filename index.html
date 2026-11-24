@@ -66,15 +66,20 @@
   <link rel="stylesheet" href="assets/css/keyboard-shortcuts.css">
   <link rel="stylesheet" href="assets/css/network-detector.css">
   <link rel="stylesheet" href="assets/css/a11y-engine.css">
+  <link rel="stylesheet" href="assets/css/a11y-font-switcher.css">
+  <link rel="stylesheet" href="assets/css/mobile-dock.css">
   <link rel="stylesheet" href="assets/css/trophy-card.css">
   <link rel="stylesheet" href="assets/css/sound-engine.css">
   <link rel="stylesheet" href="assets/css/game-ratings.css">
   <link rel="stylesheet" href="assets/css/theme-studio.css">
   <link rel="stylesheet" href="assets/css/theme-solarized-cyber.css">
+  <link rel="stylesheet" href="assets/css/theme-synthwave-outrun.css">
   <link rel="stylesheet" href="assets/css/gist-cloud-sync.css">
+  <link rel="stylesheet" href="assets/css/marquee-header.css">
   <link rel="stylesheet" href="assets/css/halloween.css?v=20261103">
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+<link rel="stylesheet" href="assets/css/gravitational-lensing-canvas.css">
 </head>
 
 <body>
@@ -673,6 +678,9 @@
           <span>•</span>
           <a href="#" id="footer-synth-studio-btn">Synth Studio</a>
           <span>•</span>
+          <button id="lens-toggle" type="button" aria-pressed="false">Toggle lensing starfield</button>
+          <a href="assets/labs/lensing.html">Lensing studio</a>
+          <span>•</span>
           <button type="button" class="footer-link-btn" id="footer-storage-manager-btn" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;padding:0;text-decoration:underline;">Storage</button>
           <span>•</span>
           <a href="https://github.com/DebasmitaBose0/ArcadeVerse" target="_blank" rel="noopener noreferrer">GitHub Repository</a>
@@ -681,6 +689,7 @@
     </div>
   </footer>
 
+  <script src="assets/js/gravitational-lensing-canvas.js"></script>
   <!-- Scripts -->
   <script src="assets/js/navbar.js"></script>
   <script src="assets/js/games-registry.js"></script>
@@ -691,6 +700,7 @@
   <script src="assets/js/arcade-token-dispenser.js"></script>
   <script src="assets/js/arcade-ticket-dispenser.js"></script>
   <script src="assets/js/isometric-arcade-room.js"></script>
+  <script src="assets/js/virtual-grid.js"></script>
   <script src="assets/js/card-flip-manual.js"></script>
   <script src="assets/js/rating-histogram.js"></script>
   <script src="assets/js/snapshot-studio.js"></script>
@@ -703,6 +713,8 @@
   <script src="assets/js/a11y-audio-beacon.js"></script>
   <script src="assets/js/a11y-screen-magnifier.js"></script>
   <script src="assets/js/a11y-engine.js"></script>
+  <script src="assets/js/a11y-font-switcher.js"></script>
+  <script src="assets/js/mobile-dock.js"></script>
   <script src="assets/js/ambient-arcade-hall.js"></script>
   <script src="assets/js/trophy-card.js"></script>
   <script src="assets/js/sound-engine.js"></script>
@@ -715,6 +727,7 @@
   <script src="assets/js/gist-cloud-sync.js"></script>
   <script src="assets/js/theme-studio.js"></script>
   <script src="assets/js/theme-customizer.js"></script>
+  <script src="assets/js/marquee-header.js"></script>
   <script src="assets/js/arcade-particles.js"></script>
   <script>
     if (window.lucide) {
