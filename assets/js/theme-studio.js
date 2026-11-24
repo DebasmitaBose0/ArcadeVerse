@@ -107,6 +107,14 @@
       textPrimary: '#faf5ff'
     },
     {
+      id: 'amber_terminal',
+      name: 'Amber Phosphor Terminal',
+      bgMain: '#120a00',
+      bgCard: '#1a1100',
+      accentPrimary: '#ffb000',
+      textPrimary: '#ffd266'
+    },
+    {
       id: 'daylight_accessible',
       name: 'Daylight High Contrast',
       bgMain: '#f8fafc',
@@ -856,7 +864,15 @@
         if (found) {
           syncPaletteToControls(found);
           updateStudioAudit();
-          showStudioToast(`Loaded "${found.name}" preset!`);
+          // Amber Phosphor Terminal switches instantly via data-theme (#1371)
+          if (id === 'amber_terminal') {
+            if (window.ThemeCustomizer && typeof window.ThemeCustomizer.switchTheme === 'function') {
+              window.ThemeCustomizer.switchTheme('amber-terminal');
+            }
+            showStudioToast('Activated Amber Phosphor CRT Terminal Theme!');
+          } else {
+            showStudioToast(`Loaded "${found.name}" preset!`);
+          }
         }
       });
     });
