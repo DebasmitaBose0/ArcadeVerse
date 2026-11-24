@@ -49,6 +49,32 @@
       textPrimary: '#f8fafc'
     },
     {
+      id: 'synthwave_outrun',
+      name: 'Synthwave Outrun',
+      bgMain: '#0d001a',
+      bgCard: '#1a0033',
+      accentPrimary: '#ff007f',
+      accentSecondary: '#00f0ff',
+      accentWarm: '#ff7b00',
+      textPrimary: '#ffffff'
+    },
+    {
+      id: 'solarized_cyber_dark',
+      name: 'Solarized Cyber Dark',
+      bgMain: '#002b36',
+      bgCard: '#073642',
+      accentPrimary: '#2aa198',
+      textPrimary: '#fdf6e3'
+    },
+    {
+      id: 'solarized_cyber_light',
+      name: 'Solarized Cyber Light',
+      bgMain: '#fdf6e3',
+      bgCard: '#eee8d5',
+      accentPrimary: '#cb4b16',
+      textPrimary: '#002b36'
+    },
+    {
       id: 'obsidian_contrast',
       name: 'Obsidian High Contrast',
       bgMain: '#050508',
@@ -431,13 +457,24 @@
 
     const p = palette || DEFAULT_THEME;
 
+    if (p.id === 'synthwave_outrun') {
+      rootEl.setAttribute('data-theme', 'synthwave-outrun');
+      if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleHorizonGrid === 'function') {
+        window.ThemeCustomizer.toggleHorizonGrid(true);
+      }
+    } else {
+      if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleHorizonGrid === 'function') {
+        window.ThemeCustomizer.toggleHorizonGrid(false);
+      }
+    }
+
     rootEl.style.setProperty('--bg-main', p.bgMain);
     rootEl.style.setProperty('--bg-card', p.bgCard);
     rootEl.style.setProperty('--accent-primary', p.accentPrimary);
     rootEl.style.setProperty('--text-primary', p.textPrimary);
 
     // Synchronize hover and accent variations
-    rootEl.style.setProperty('--border-focus', p.accentPrimary);
+    rootEl.style.setProperty('--border-focus', p.accentWarm || p.accentSecondary || p.accentPrimary);
 
     window.dispatchEvent(new CustomEvent('arcadeverse:theme-customized', { detail: p }));
   }
@@ -627,6 +664,45 @@
                 `).join('')}
               </div>
             </div>
+
+            <!-- Solarized Cyber Dual Mode Sub-Toggle (#1374) -->
+            <div class="solarized-subtoggle-group" id="studio-solarized-subtoggle">
+              <div class="solarized-subtoggle-header">
+                <span class="solarized-subtoggle-title">SOLARIZED DUAL MODE SUB-TOGGLE</span>
+                <span class="solarized-subtoggle-badge">WCAG AAA</span>
+              </div>
+              <div class="solarized-subtoggle-switch" role="group" aria-label="Solarized Mode Sub-Toggle">
+                <button type="button" class="solarized-mode-btn mode-dark" id="studio-subtoggle-dark" aria-label="Switch to Solarized Cyber Dark">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                  </svg>
+                  <span>Solarized Dark</span>
+                </button>
+                <button type="button" class="solarized-mode-btn mode-light" id="studio-subtoggle-light" aria-label="Switch to Solarized Cyber Light">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                  </svg>
+                  <span>Solarized Light</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Synthwave Outrun Quick Switch (#1365) -->
+            <div class="synthwave-subtoggle-group" id="studio-synthwave-subtoggle">
+              <div class="synthwave-subtoggle-header">
+                <span class="synthwave-subtoggle-title">1980s SYNTHWAVE / OUTRUN</span>
+                <span class="synthwave-subtoggle-badge">NEON MATRIX</span>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="synthwave-mode-btn" id="studio-synthwave-btn" style="flex:1;" aria-label="Activate Cyberpunk Neon Sunset Synthwave Outrun Theme">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                  </svg>
+                  <span>Activate Synthwave Outrun</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Right Diagnostics & Live Preview Column -->
@@ -784,6 +860,52 @@
         }
       });
     });
+
+    // Solarized Dual Mode Sub-Toggle Buttons (#1374)
+    const subtoggleDark = document.getElementById('studio-subtoggle-dark');
+    const subtoggleLight = document.getElementById('studio-subtoggle-light');
+
+    if (subtoggleDark && subtoggleLight) {
+      subtoggleDark.addEventListener('click', () => {
+        const found = PRESET_PALETTES.find(p => p.id === 'solarized_cyber_dark');
+        if (found) {
+          syncPaletteToControls(found);
+          updateStudioAudit();
+          subtoggleDark.classList.add('active');
+          subtoggleDark.setAttribute('aria-pressed', 'true');
+          subtoggleLight.classList.remove('active');
+          subtoggleLight.setAttribute('aria-pressed', 'false');
+          showStudioToast('Loaded Solarized Cyber Dark mode (WCAG AAA)!');
+        }
+      });
+
+      subtoggleLight.addEventListener('click', () => {
+        const found = PRESET_PALETTES.find(p => p.id === 'solarized_cyber_light');
+        if (found) {
+          syncPaletteToControls(found);
+          updateStudioAudit();
+          subtoggleLight.classList.add('active');
+          subtoggleLight.setAttribute('aria-pressed', 'true');
+          subtoggleDark.classList.remove('active');
+          subtoggleDark.setAttribute('aria-pressed', 'false');
+          showStudioToast('Loaded Solarized Cyber Light mode (WCAG AAA)!');
+        }
+      });
+    }
+
+    // Synthwave Outrun Button (#1365)
+    const synthwaveBtn = document.getElementById('studio-synthwave-btn');
+    if (synthwaveBtn) {
+      synthwaveBtn.addEventListener('click', () => {
+        const found = PRESET_PALETTES.find(p => p.id === 'synthwave_outrun');
+        if (found) {
+          syncPaletteToControls(found);
+          updateStudioAudit();
+          synthwaveBtn.classList.add('active');
+          showStudioToast('Loaded Synthwave Outrun Neon Matrix!');
+        }
+      });
+    }
 
     // Auto-Fix Button
     const autofixBtn = document.getElementById('btn-studio-autofix');
