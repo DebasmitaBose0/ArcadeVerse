@@ -1,9 +1,12 @@
 /**
- * ArcadeVerse Theme Customizer, Solarized Controller & Synthwave Outrun Controller (#1365, #1374)
+ * ArcadeVerse Theme Customizer, Solarized, Synthwave & Game Boy DMG Controller (#1363, #1365, #1374)
  * Precision Theme Architecture:
  * - Ethan Schoonover's precision Solarized system (Cyber Dark & Cyber Light)
  * - 1980s Cyberpunk Neon Sunset Synthwave Outrun Theme Studio (Hot Magenta, Electric Cyan,
  *   Sunset Tangerine, Deep Violet, Midnight Indigo) with animated horizon grid and retro duotone card glows.
+ * - 1989 Nintendo Game Boy (DMG-01) 4-Shade Monochromatic Olive Green LCD Ghosting Theme
+ *   (Darkest Olive #0f380f, Dark Olive #306230, Light Olive #8bac0f, Lightest Background #9bbc0f)
+ *   with 2px 2px dot-matrix pixel grid and toggleable slow pixel decay ghosting trails filter.
  *
  * Strictly zero Unicode emojis across all code, logs, and elements.
  */
@@ -16,6 +19,7 @@
     root.ThemeCustomizer = api;
     root.SolarizedThemeController = api;
     root.SynthwaveThemeController = api;
+    root.GameBoyThemeController = api;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
@@ -23,6 +27,7 @@
   const STORAGE_KEY_PALETTE = 'arcadeverse_solarized_palette';
   const STORAGE_KEY_MODE = 'arcadeverse_solarized_mode'; // 'dark' | 'light'
   const STORAGE_KEY_ACTIVE_THEME = 'arcadeverse_active_custom_theme';
+  const STORAGE_KEY_DMG_GHOSTING = 'arcadeverse_dmg_ghosting_active';
 
   // Precision Solarized Palettes
   const SOLARIZED_PALETTES = {
@@ -79,6 +84,26 @@
     badgeText: '#00f0ff',
     buttonBg: '#ff007f',
     buttonText: '#ffffff'
+  };
+
+  // 1989 Nintendo Game Boy (DMG-01) 4-Shade Olive Green Palette (#1363)
+  const GAMEBOY_DMG_PALETTE = {
+    id: 'gameboy_dmg',
+    themeName: 'gameboy-dmg',
+    name: 'Game Boy DMG-01 Olive LCD',
+    bgMain: '#9bbc0f',          // Lightest Background
+    bgCard: '#9bbc0f',          // Lightest Background
+    bgSurface: '#8bac0f',       // Light Olive
+    accentPrimary: '#0f380f',   // Darkest Olive
+    accentSecondary: '#306230', // Dark Olive
+    accentTertiary: '#8bac0f',  // Light Olive
+    textPrimary: '#0f380f',     // Darkest Olive (6.02:1 Contrast Ratio vs #9bbc0f, WCAG AA)
+    textSecondary: '#306230',   // Dark Olive
+    textMuted: '#306230',       // Dark Olive
+    darkestOlive: '#0f380f',
+    darkOlive: '#306230',
+    lightOlive: '#8bac0f',
+    lightestBackground: '#9bbc0f'
   };
 
   /**
@@ -201,11 +226,82 @@
   }
 
   /**
+   * Applies the Game Boy DMG-01 theme to the document (#1363).
+   * @param {boolean} persist
+   */
+  function applyGameBoyDMGTheme(persist = true) {
+    const palette = GAMEBOY_DMG_PALETTE;
+    const rootEl = typeof document !== 'undefined' ? document.documentElement : null;
+
+    if (rootEl) {
+      toggleHorizonGrid(false);
+      rootEl.setAttribute('data-theme', 'gameboy-dmg');
+      rootEl.style.setProperty('--bg-main', palette.bgMain);
+      rootEl.style.setProperty('--bg-card', palette.bgCard);
+      rootEl.style.setProperty('--accent-primary', palette.accentPrimary);
+      rootEl.style.setProperty('--accent-secondary', palette.accentSecondary);
+      rootEl.style.setProperty('--text-primary', palette.textPrimary);
+      rootEl.style.setProperty('--border-focus', palette.accentSecondary);
+    }
+
+    if (persist && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_ACTIVE_THEME, 'gameboy-dmg');
+      } catch (_) {}
+    }
+
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('arcadeverse:gameboy-theme-changed', {
+        detail: { palette }
+      }));
+    }
+
+    return palette;
+  }
+
+  /**
+   * Toggles the STN LCD slow pixel response ghosting decay effect (#1363).
+   * @param {boolean} [forcedState]
+   */
+  function toggleGameBoyGhosting(forcedState) {
+    if (typeof document === 'undefined') return false;
+    const rootEl = document.documentElement;
+    const currentState = rootEl.getAttribute('data-dmg-ghosting') === 'true' ||
+                         rootEl.classList.contains('dmg-ghosting-active');
+    const newState = typeof forcedState === 'boolean' ? forcedState : !currentState;
+
+    if (newState) {
+      rootEl.setAttribute('data-dmg-ghosting', 'true');
+      rootEl.classList.add('dmg-ghosting-active');
+    } else {
+      rootEl.removeAttribute('data-dmg-ghosting');
+      rootEl.classList.remove('dmg-ghosting-active');
+    }
+
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_DMG_GHOSTING, newState ? 'true' : 'false');
+      } catch (_) {}
+    }
+
+    const toggleBtn = document.getElementById('dmg-ghosting-btn');
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('active', newState);
+      toggleBtn.setAttribute('aria-pressed', newState ? 'true' : 'false');
+    }
+
+    return newState;
+  }
+
+  /**
    * Switches theme instantly by key/id.
-   * @param {string} themeKey ('synthwave-outrun' | 'synthwave_outrun' | 'solarized-dark' | 'solarized-light' | 'dark' | 'light')
+   * @param {string} themeKey ('gameboy-dmg' | 'gameboy_dmg' | 'synthwave-outrun' | 'synthwave_outrun' | 'solarized-dark' | 'solarized-light' | 'dark' | 'light')
    * @param {boolean} persist
    */
   function switchTheme(themeKey, persist = true) {
+    if (themeKey === 'gameboy-dmg' || themeKey === 'gameboy_dmg') {
+      return applyGameBoyDMGTheme(persist);
+    }
     if (themeKey === 'synthwave-outrun' || themeKey === 'synthwave_outrun') {
       return applySynthwaveOutrun(persist);
     }
@@ -307,8 +403,15 @@
     try {
       const activeCustom = localStorage.getItem(STORAGE_KEY_ACTIVE_THEME);
       const rootTheme = document.documentElement.getAttribute('data-theme');
+      const savedGhosting = localStorage.getItem(STORAGE_KEY_DMG_GHOSTING);
 
-      if (rootTheme === 'synthwave-outrun' || activeCustom === 'synthwave-outrun') {
+      if (savedGhosting === 'true') {
+        toggleGameBoyGhosting(true);
+      }
+
+      if (rootTheme === 'gameboy-dmg' || activeCustom === 'gameboy-dmg') {
+        applyGameBoyDMGTheme(false);
+      } else if (rootTheme === 'synthwave-outrun' || activeCustom === 'synthwave-outrun') {
         applySynthwaveOutrun(false);
       } else if (rootTheme && rootTheme.startsWith('solarized-')) {
         const savedMode = localStorage.getItem(STORAGE_KEY_MODE);
@@ -328,9 +431,12 @@
   return {
     SOLARIZED_PALETTES,
     SYNTHWAVE_OUTRUN_PALETTE,
+    GAMEBOY_DMG_PALETTE,
     applySolarizedMode,
     toggleSolarizedMode,
     applySynthwaveOutrun,
+    applyGameBoyDMGTheme,
+    toggleGameBoyGhosting,
     switchTheme,
     toggleHorizonGrid,
     getActiveMode,

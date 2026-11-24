@@ -1,0 +1,271 @@
+/* ==========================================================================
+   THEME: 1989 NINTENDO GAME BOY (DMG-01) 4-SHADE MONOCHROMATIC OLIVE GREEN (#1363)
+   Authentic 4-color dot-matrix STN LCD palette with 2px 2px pixel grid
+   and optional slow pixel decay ghosting trails simulation filter.
+   ========================================================================== */
+
+:root[data-theme="gameboy-dmg"],
+html[data-theme="gameboy-dmg"] {
+  /* 4 Official DMG Olive Shades */
+  --dmg-darkest: #0f380f;     /* Darkest Olive (Color 0) */
+  --dmg-dark: #306230;        /* Dark Olive (Color 1) */
+  --dmg-light: #8bac0f;       /* Light Olive (Color 2) */
+  --dmg-lightest: #9bbc0f;    /* Lightest Background (Color 3) */
+
+  /* Platform Semantic Variable Mapping */
+  --bg-primary: var(--dmg-lightest);
+  --bg-secondary: var(--dmg-light);
+  --bg-main: var(--dmg-lightest);
+  --bg-surface: var(--dmg-light);
+  --bg-surface-elevated: var(--dmg-lightest);
+  --bg-card: var(--dmg-lightest);
+  --bg-card-hover: var(--dmg-light);
+  --bg-header: var(--dmg-lightest);
+
+  --accent-primary: var(--dmg-darkest);
+  --accent-secondary: var(--dmg-dark);
+  --accent-tertiary: var(--dmg-light);
+  --accent-warm: var(--dmg-dark);
+
+  --text-primary: var(--dmg-darkest);
+  --text-secondary: var(--dmg-dark);
+  --text-muted: var(--dmg-dark);
+  --text-inverse: var(--dmg-lightest);
+
+  --border-subtle: var(--dmg-dark);
+  --border-medium: var(--dmg-darkest);
+  --border-glow: var(--dmg-darkest);
+
+  --font-mono: 'Courier New', Courier, monospace;
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+}
+
+/* Authentic DMG-01 STN LCD Sub-Pixel Grid (repeating 2px 2px pattern) */
+[data-theme="gameboy-dmg"] body,
+body[data-theme="gameboy-dmg"] {
+  background-color: var(--dmg-lightest) !important;
+  color: var(--dmg-darkest) !important;
+  background-image:
+    linear-gradient(90deg, rgba(15, 56, 15, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(15, 56, 15, 0.08) 1px, transparent 1px) !important;
+  background-size: 2px 2px !important;
+  font-family: var(--font-mono), monospace !important;
+}
+
+/* Optional STN LCD Slow Pixel Response Ghosting Decay Filter */
+[data-theme="gameboy-dmg"].dmg-ghosting-active body,
+[data-theme="gameboy-dmg"].dmg-ghosting-active .game-card,
+[data-theme="gameboy-dmg"].dmg-ghosting-active .btn,
+[data-theme="gameboy-dmg"] .dmg-ghosting-enabled,
+[data-theme="gameboy-dmg"] body.dmg-ghosting-decay,
+html[data-theme="gameboy-dmg"][data-dmg-ghosting="true"] body,
+html[data-theme="gameboy-dmg"][data-dmg-ghosting="true"] * {
+  transition: color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Dot-Matrix LCD Cards, Modals, and Panels */
+[data-theme="gameboy-dmg"] .game-card,
+[data-theme="gameboy-dmg"] .catalog-card,
+[data-theme="gameboy-dmg"] .modal-content,
+[data-theme="gameboy-dmg"] .controls-legend-card,
+[data-theme="gameboy-dmg"] .stat-card,
+[data-theme="gameboy-dmg"] .theme-studio-modal-content {
+  background-color: var(--dmg-lightest) !important;
+  border: 2px solid var(--dmg-darkest) !important;
+  box-shadow: 3px 3px 0px var(--dmg-darkest) !important;
+  color: var(--dmg-darkest) !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="gameboy-dmg"] .game-card:hover,
+[data-theme="gameboy-dmg"] .catalog-card:hover,
+[data-theme="gameboy-dmg"] .stat-card:hover {
+  background-color: var(--dmg-light) !important;
+  border-color: var(--dmg-darkest) !important;
+  box-shadow: 4px 4px 0px var(--dmg-darkest) !important;
+}
+
+/* Headings and Titles */
+[data-theme="gameboy-dmg"] h1,
+[data-theme="gameboy-dmg"] h2,
+[data-theme="gameboy-dmg"] h3,
+[data-theme="gameboy-dmg"] h4,
+[data-theme="gameboy-dmg"] .section-title,
+[data-theme="gameboy-dmg"] .hero-title,
+[data-theme="gameboy-dmg"] .game-title,
+[data-theme="gameboy-dmg"] .stat-number {
+  color: var(--dmg-darkest) !important;
+  text-shadow: none !important;
+}
+
+[data-theme="gameboy-dmg"] .section-subtitle,
+[data-theme="gameboy-dmg"] .hero-subtitle,
+[data-theme="gameboy-dmg"] .game-desc,
+[data-theme="gameboy-dmg"] .stat-label,
+[data-theme="gameboy-dmg"] p {
+  color: var(--dmg-dark) !important;
+}
+
+/* Game Boy DMG Tactical 4-Shade Buttons */
+[data-theme="gameboy-dmg"] .btn,
+[data-theme="gameboy-dmg"] button.btn,
+[data-theme="gameboy-dmg"] .filter-chip,
+[data-theme="gameboy-dmg"] .action-btn {
+  background-color: var(--dmg-light) !important;
+  color: var(--dmg-darkest) !important;
+  border: 2px solid var(--dmg-darkest) !important;
+  border-radius: 0px !important;
+  box-shadow: 2px 2px 0px var(--dmg-darkest) !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="gameboy-dmg"] .btn:hover,
+[data-theme="gameboy-dmg"] button.btn:hover,
+[data-theme="gameboy-dmg"] .filter-chip:hover {
+  background-color: var(--dmg-darkest) !important;
+  color: var(--dmg-lightest) !important;
+  border-color: var(--dmg-darkest) !important;
+}
+
+[data-theme="gameboy-dmg"] .filter-chip.active,
+[data-theme="gameboy-dmg"] .btn.btn-primary,
+[data-theme="gameboy-dmg"] .btn-play {
+  background-color: var(--dmg-darkest) !important;
+  color: var(--dmg-lightest) !important;
+  border-color: var(--dmg-darkest) !important;
+  box-shadow: 2px 2px 0px var(--dmg-dark) !important;
+}
+
+[data-theme="gameboy-dmg"] .filter-chip.active:hover,
+[data-theme="gameboy-dmg"] .btn.btn-primary:hover,
+[data-theme="gameboy-dmg"] .btn-play:hover {
+  background-color: var(--dmg-dark) !important;
+  color: var(--dmg-lightest) !important;
+}
+
+/* Badges and Tag Pills */
+[data-theme="gameboy-dmg"] .tag-pill,
+[data-theme="gameboy-dmg"] .game-meta-badge,
+[data-theme="gameboy-dmg"] .meta-badge,
+[data-theme="gameboy-dmg"] .hero-badge,
+[data-theme="gameboy-dmg"] .section-tag {
+  background-color: var(--dmg-light) !important;
+  color: var(--dmg-darkest) !important;
+  border: 1px solid var(--dmg-darkest) !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="gameboy-dmg"] .tag-pill.active {
+  background-color: var(--dmg-darkest) !important;
+  color: var(--dmg-lightest) !important;
+}
+
+/* Navbar & Footer Chrome */
+[data-theme="gameboy-dmg"] .navbar,
+[data-theme="gameboy-dmg"] .footer {
+  background-color: var(--dmg-lightest) !important;
+  border-bottom: 2px solid var(--dmg-darkest) !important;
+  color: var(--dmg-darkest) !important;
+}
+
+[data-theme="gameboy-dmg"] .footer {
+  border-top: 2px solid var(--dmg-darkest) !important;
+  border-bottom: none !important;
+}
+
+/* Tables and Leaderboards */
+[data-theme="gameboy-dmg"] .leaderboard-table,
+[data-theme="gameboy-dmg"] table {
+  background-color: var(--dmg-lightest) !important;
+  border: 2px solid var(--dmg-darkest) !important;
+  color: var(--dmg-darkest) !important;
+}
+
+[data-theme="gameboy-dmg"] .leaderboard-table th,
+[data-theme="gameboy-dmg"] table th {
+  background-color: var(--dmg-darkest) !important;
+  color: var(--dmg-lightest) !important;
+  border-bottom: 2px solid var(--dmg-darkest) !important;
+}
+
+[data-theme="gameboy-dmg"] .leaderboard-table tr,
+[data-theme="gameboy-dmg"] table tr {
+  border-bottom: 1px solid var(--dmg-dark) !important;
+}
+
+[data-theme="gameboy-dmg"] .leaderboard-table tr:hover,
+[data-theme="gameboy-dmg"] table tr:hover {
+  background-color: var(--dmg-light) !important;
+}
+
+/* Modal and Backdrop Overlays */
+[data-theme="gameboy-dmg"] .modal,
+[data-theme="gameboy-dmg"] .game-modal-overlay {
+  background: rgba(15, 56, 15, 0.75) !important;
+  backdrop-filter: none !important;
+}
+
+/* Inputs and Forms */
+[data-theme="gameboy-dmg"] input,
+[data-theme="gameboy-dmg"] select,
+[data-theme="gameboy-dmg"] textarea,
+[data-theme="gameboy-dmg"] .search-input {
+  background-color: var(--dmg-lightest) !important;
+  color: var(--dmg-darkest) !important;
+  border: 2px solid var(--dmg-darkest) !important;
+  border-radius: 0px !important;
+}
+
+[data-theme="gameboy-dmg"] input::placeholder,
+[data-theme="gameboy-dmg"] textarea::placeholder {
+  color: var(--dmg-dark) !important;
+  opacity: 0.8 !important;
+}
+
+/* Ghosting decay switch toggle button styles */
+.dmg-ghosting-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--dmg-light, #8bac0f);
+  border: 2px solid var(--dmg-darkest, #0f380f);
+  margin-top: 10px;
+}
+
+.dmg-ghosting-toggle-btn {
+  background-color: var(--dmg-lightest, #9bbc0f);
+  color: var(--dmg-darkest, #0f380f);
+  border: 1px solid var(--dmg-darkest, #0f380f);
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dmg-ghosting-toggle-btn.active {
+  background-color: var(--dmg-darkest, #0f380f);
+  color: var(--dmg-lightest, #9bbc0f);
+}
+
+/* Reduced motion accessibility support */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="gameboy-dmg"] *,
+  [data-theme="gameboy-dmg"].dmg-ghosting-active body,
+  [data-theme="gameboy-dmg"].dmg-ghosting-active .game-card,
+  [data-theme="gameboy-dmg"].dmg-ghosting-active .btn,
+  [data-theme="gameboy-dmg"] .dmg-ghosting-enabled,
+  html[data-theme="gameboy-dmg"][data-dmg-ghosting="true"] * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

@@ -113,6 +113,15 @@
       bgCard: '#ffffff',
       accentPrimary: '#0284c7',
       textPrimary: '#0f172a'
+    },
+    {
+      id: 'gameboy_dmg',
+      name: 'Game Boy DMG-01 Olive LCD',
+      bgMain: '#9bbc0f',
+      bgCard: '#9bbc0f',
+      accentPrimary: '#0f380f',
+      accentSecondary: '#306230',
+      textPrimary: '#0f380f'
     }
   ];
 
@@ -462,6 +471,11 @@
       if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleHorizonGrid === 'function') {
         window.ThemeCustomizer.toggleHorizonGrid(true);
       }
+    } else if (p.id === 'gameboy_dmg') {
+      rootEl.setAttribute('data-theme', 'gameboy-dmg');
+      if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleHorizonGrid === 'function') {
+        window.ThemeCustomizer.toggleHorizonGrid(false);
+      }
     } else {
       if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleHorizonGrid === 'function') {
         window.ThemeCustomizer.toggleHorizonGrid(false);
@@ -703,6 +717,22 @@
                 </button>
               </div>
             </div>
+
+            <!-- Game Boy DMG-01 Olive LCD Quick Switch & Ghosting Toggle (#1363) -->
+            <div class="dmg-subtoggle-group" id="studio-dmg-subtoggle" style="margin-top:12px; padding:10px; background:rgba(139, 172, 15, 0.15); border:1px solid #306230; border-radius:6px;">
+              <div class="dmg-subtoggle-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span class="dmg-subtoggle-title" style="font-size:0.75rem; font-weight:700; color:#8bac0f; letter-spacing:0.5px;">1989 GAME BOY DMG-01</span>
+                <span class="dmg-subtoggle-badge" style="font-size:0.65rem; background:#306230; color:#9bbc0f; padding:2px 6px; border-radius:3px; font-weight:700;">4-SHADE LCD</span>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="dmg-mode-btn" id="studio-dmg-btn" style="flex:1; min-width:140px; background:#306230; color:#9bbc0f; border:1px solid #0f380f; padding:6px 10px; border-radius:4px; font-size:0.75rem; font-weight:700; cursor:pointer;" aria-label="Activate Game Boy DMG-01 Olive Theme">
+                  <span>Activate DMG Olive</span>
+                </button>
+                <button type="button" class="dmg-ghosting-btn" id="dmg-ghosting-btn" style="background:#0f380f; color:#8bac0f; border:1px solid #306230; padding:6px 10px; border-radius:4px; font-size:0.75rem; font-weight:700; cursor:pointer;" aria-label="Toggle STN LCD Slow Pixel Response Ghosting Trails">
+                  <span>Ghosting Trails</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Right Diagnostics & Live Preview Column -->
@@ -903,6 +933,48 @@
           updateStudioAudit();
           synthwaveBtn.classList.add('active');
           showStudioToast('Loaded Synthwave Outrun Neon Matrix!');
+        }
+      });
+    }
+
+    // Game Boy DMG-01 Button & Ghosting Toggle (#1363)
+    const dmgBtn = document.getElementById('studio-dmg-btn');
+    if (dmgBtn) {
+      dmgBtn.addEventListener('click', () => {
+        const found = PRESET_PALETTES.find(p => p.id === 'gameboy_dmg');
+        if (found) {
+          syncPaletteToControls(found);
+          updateStudioAudit();
+          dmgBtn.classList.add('active');
+          showStudioToast('Loaded Game Boy DMG-01 Olive LCD Matrix!');
+        }
+      });
+    }
+
+    const ghostingBtn = document.getElementById('dmg-ghosting-btn');
+    if (ghostingBtn) {
+      const isGhosting = document.documentElement.getAttribute('data-dmg-ghosting') === 'true' ||
+                         document.documentElement.classList.contains('dmg-ghosting-active');
+      ghostingBtn.classList.toggle('active', isGhosting);
+      ghostingBtn.setAttribute('aria-pressed', isGhosting ? 'true' : 'false');
+
+      ghostingBtn.addEventListener('click', () => {
+        if (typeof window !== 'undefined' && window.ThemeCustomizer && typeof window.ThemeCustomizer.toggleGameBoyGhosting === 'function') {
+          const active = window.ThemeCustomizer.toggleGameBoyGhosting();
+          showStudioToast(active ? 'DMG LCD Slow Pixel Ghosting Enabled' : 'DMG LCD Slow Pixel Ghosting Disabled');
+        } else {
+          const current = document.documentElement.getAttribute('data-dmg-ghosting') === 'true';
+          const next = !current;
+          if (next) {
+            document.documentElement.setAttribute('data-dmg-ghosting', 'true');
+            document.documentElement.classList.add('dmg-ghosting-active');
+          } else {
+            document.documentElement.removeAttribute('data-dmg-ghosting');
+            document.documentElement.classList.remove('dmg-ghosting-active');
+          }
+          ghostingBtn.classList.toggle('active', next);
+          ghostingBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+          showStudioToast(next ? 'DMG LCD Slow Pixel Ghosting Enabled' : 'DMG LCD Slow Pixel Ghosting Disabled');
         }
       });
     }
