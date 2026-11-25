@@ -1,0 +1,82 @@
+/* ==========================================================================
+   ArcadeVerse Theater Immersion Mode Styles (#1375)
+   Fullscreen arcade theater immersion with darkened backdrop & spotlight.
+   ========================================================================== */
+
+@layer components;
+
+/* Theater immersion backdrop overlay */
+#theater-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(255, 176, 0, 0.10) 0%,
+    rgba(10, 5, 0, 0.96) 65%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 1085;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  isolation: isolate;
+}
+
+#theater-overlay.theater-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Spotlight glow ring around the active canvas */
+.theater-spotlight {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 720px;
+  height: 460px;
+  margin-top: -230px;
+  margin-left: -360px;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(255, 176, 0, 0.25) 0%,
+    rgba(255, 176, 0, 0.05) 45%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 1086;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: blur(24px);
+}
+
+#theater-overlay.theater-active .theater-spotlight {
+  opacity: 1;
+}
+
+/* Theater mode toggle button styling in modal */
+.theater-mode-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.theater-mode-btn.theater-active {
+  color: #ffb000 !important;
+  border-color: rgba(255, 176, 0, 0.55) !important;
+  box-shadow: 0 0 14px rgba(255, 176, 0, 0.35) !important;
+}
+
+/* Reduced motion: disable transitions */
+html.a11y-reduced-motion #theater-overlay,
+html.a11y-reduced-motion .theater-spotlight {
+  transition: none !important;
+}
+
+/* Light theme adaptation */
+[data-theme="light"] #theater-overlay {
+  background: radial-gradient(
+    circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(255, 176, 0, 0.10) 0%,
+    rgba(255, 250, 240, 0.96) 65%
+  );
+}
