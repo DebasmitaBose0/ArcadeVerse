@@ -3847,7 +3847,348 @@
           notify();
         }
       };
-    })()
+    })(),
+
+    /**
+     * Unified Action-Mapping Input Manager (#1622)
+     */
+    createInputManager: function (options) {
+      var opts = options || {};
+      var actionMap = Object.create(null);
+      var deadzone = typeof opts.deadzone === "number" ? opts.deadzone : 0.15;
+      var bufferDurationMs = typeof opts.bufferMs === "number" ? opts.bufferMs : 120;
+      var targetElement = opts.target || (typeof window !== "undefined" ? window : null);
+
+      var activePhysicalKeys = Object.create(null);
+      var currentActionState = Object.create(null);
+      var prevActionState = Object.create(null);
+      var justPressedActions = Object.create(null);
+      var justReleasedActions = Object.create(null);
+      var actionBuffer = []; // [{ action: string, timestamp: number }]
+
+      var destroyed = false;
+
+      // Register initial action bindings
+      if (opts.actions) {
+        for (var actName in opts.actions) {
+          if (Object.prototype.hasOwnProperty.call(opts.actions, actName)) {
+            var rawBindings = opts.actions[actName];
+            actionMap[actName] = Array.isArray(rawBindings) ? rawBindings.slice() : [rawBindings];
+          }
+        }
+      }
+
+      function getTime() {
+        if (typeof performance !== "undefined" && typeof performance.now === "function") {
+          return performance.now();
+        }
+        return Date.now();
+      }
+
+      function normalizeKey(str) {
+        if (!str) return "";
+        return String(str).toLowerCase();
+      }
+
+      function isTriggerActive(trigger) {
+        if (typeof trigger !== "string") return false;
+        var norm = normalizeKey(trigger);
+
+        // Check active physical keys
+        if (activePhysicalKeys[trigger] || activePhysicalKeys[norm]) {
+          return true;
+        }
+
+        // Check Gamepad
+        if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+          try {
+            var gamepads = navigator.getGamepads();
+            if (gamepads) {
+              for (var g = 0; g < gamepads.length; g++) {
+                var gp = gamepads[g];
+                if (!gp || !gp.connected) continue;
+
+                // GamepadButton[index]
+                if (trigger.indexOf("GamepadButton") === 0) {
+                  var btnIdx = parseInt(trigger.substring(13), 10);
+                  if (!isNaN(btnIdx) && gp.buttons[btnIdx] && (gp.buttons[btnIdx].pressed || gp.buttons[btnIdx].value > 0.5)) {
+                    return true;
+                  }
+                }
+
+                // Dpad aliases
+                if (trigger === "GamepadDpadUp" && gp.buttons[12] && gp.buttons[12].pressed) return true;
+                if (trigger === "GamepadDpadDown" && gp.buttons[13] && gp.buttons[13].pressed) return true;
+                if (trigger === "GamepadDpadLeft" && gp.buttons[14] && gp.buttons[14].pressed) return true;
+                if (trigger === "GamepadDpadRight" && gp.buttons[15] && gp.buttons[15].pressed) return true;
+              }
+            }
+          } catch (_) {}
+        }
+
+        return false;
+      }
+
+      function evaluateActionState(actionName) {
+        var triggers = actionMap[actionName];
+        if (!triggers || !triggers.length) return false;
+        for (var i = 0; i < triggers.length; i++) {
+          if (isTriggerActive(triggers[i])) return true;
+        }
+        return false;
+      }
+
+      function flush() {
+        for (var k in activePhysicalKeys) {
+          activePhysicalKeys[k] = false;
+        }
+        for (var a in currentActionState) {
+          if (currentActionState[a]) {
+            justReleasedActions[a] = true;
+          }
+          currentActionState[a] = false;
+          prevActionState[a] = false;
+          justPressedActions[a] = false;
+        }
+      }
+
+      function onKeyDown(evt) {
+        if (destroyed || !evt) return;
+        var code = evt.code;
+        var key = evt.key;
+        if (code) {
+          activePhysicalKeys[code] = true;
+          activePhysicalKeys[normalizeKey(code)] = true;
+        }
+        if (key) {
+          activePhysicalKeys[key] = true;
+          activePhysicalKeys[normalizeKey(key)] = true;
+        }
+
+        // Re-evaluate actions immediately to record justPressed and buffer
+        for (var act in actionMap) {
+          var wasDown = !!currentActionState[act];
+          var isDown = evaluateActionState(act);
+          if (isDown && !wasDown) {
+            currentActionState[act] = true;
+            justPressedActions[act] = true;
+            actionBuffer.push({ action: act, timestamp: getTime() });
+          }
+        }
+      }
+
+      function onKeyUp(evt) {
+        if (destroyed || !evt) return;
+        var code = evt.code;
+        var key = evt.key;
+        if (code) {
+          activePhysicalKeys[code] = false;
+          activePhysicalKeys[normalizeKey(code)] = false;
+        }
+        if (key) {
+          activePhysicalKeys[key] = false;
+          activePhysicalKeys[normalizeKey(key)] = false;
+        }
+
+        for (var act in actionMap) {
+          var wasDown = !!currentActionState[act];
+          var isDown = evaluateActionState(act);
+          if (!isDown && wasDown) {
+            currentActionState[act] = false;
+            justReleasedActions[act] = true;
+          }
+        }
+      }
+
+      function onBlur() {
+        flush();
+      }
+
+      function onVisibilityChange() {
+        if (typeof document !== "undefined" && document.hidden) {
+          flush();
+        }
+      }
+
+      function onTeardownMessage(event) {
+        if (!event || !event.data) return;
+        if (event.data.type === "ARCADEVERSE_TEARDOWN" || event.data.type === "ARCADEVERSE_PAUSE") {
+          flush();
+        }
+      }
+
+      // Attach window & document listeners
+      if (typeof window !== "undefined") {
+        if (targetElement && typeof targetElement.addEventListener === "function") {
+          targetElement.addEventListener("keydown", onKeyDown, false);
+          targetElement.addEventListener("keyup", onKeyUp, false);
+        }
+        window.addEventListener("blur", onBlur, false);
+        window.addEventListener("message", onTeardownMessage, false);
+      }
+      if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+        document.addEventListener("visibilitychange", onVisibilityChange, false);
+      }
+
+      var inputManager = {
+        bindAction: function (actionName, triggers) {
+          var list = Array.isArray(triggers) ? triggers.slice() : [triggers];
+          actionMap[actionName] = list;
+          return this;
+        },
+
+        unbindAction: function (actionName) {
+          delete actionMap[actionName];
+          delete currentActionState[actionName];
+          delete prevActionState[actionName];
+          delete justPressedActions[actionName];
+          delete justReleasedActions[actionName];
+          return this;
+        },
+
+        isActionDown: function (actionName) {
+          if (currentActionState[actionName] !== undefined) {
+            return !!currentActionState[actionName];
+          }
+          return evaluateActionState(actionName);
+        },
+
+        wasActionJustPressed: function (actionName) {
+          return !!justPressedActions[actionName];
+        },
+
+        wasActionJustReleased: function (actionName) {
+          return !!justReleasedActions[actionName];
+        },
+
+        isKeyDown: function (keyOrCode) {
+          if (!keyOrCode) return false;
+          return !!(activePhysicalKeys[keyOrCode] || activePhysicalKeys[normalizeKey(keyOrCode)]);
+        },
+
+        bufferAction: function (actionName) {
+          actionBuffer.push({ action: actionName, timestamp: getTime() });
+        },
+
+        hasBufferedAction: function (actionName) {
+          var now = getTime();
+          for (var i = actionBuffer.length - 1; i >= 0; i--) {
+            var item = actionBuffer[i];
+            if (now - item.timestamp > bufferDurationMs) {
+              actionBuffer.splice(0, i + 1);
+              break;
+            }
+            if (item.action === actionName) {
+              return true;
+            }
+          }
+          return false;
+        },
+
+        consumeBufferedAction: function (actionName) {
+          var now = getTime();
+          for (var i = actionBuffer.length - 1; i >= 0; i--) {
+            var item = actionBuffer[i];
+            if (now - item.timestamp > bufferDurationMs) {
+              actionBuffer.splice(0, i + 1);
+              break;
+            }
+            if (item.action === actionName) {
+              actionBuffer.splice(i, 1);
+              return true;
+            }
+          }
+          return false;
+        },
+
+        getAxis: function (axisName) {
+          var name = String(axisName || "").toUpperCase();
+          var val = 0;
+
+          if (name === "HORIZONTAL") {
+            var left = this.isActionDown("MOVE_LEFT") || this.isKeyDown("ArrowLeft") || this.isKeyDown("KeyA");
+            var right = this.isActionDown("MOVE_RIGHT") || this.isKeyDown("ArrowRight") || this.isKeyDown("KeyD");
+            if (left) val -= 1;
+            if (right) val += 1;
+          } else if (name === "VERTICAL") {
+            var up = this.isActionDown("MOVE_UP") || this.isKeyDown("ArrowUp") || this.isKeyDown("KeyW");
+            var down = this.isActionDown("MOVE_DOWN") || this.isKeyDown("ArrowDown") || this.isKeyDown("KeyS");
+            if (up) val -= 1;
+            if (down) val += 1;
+          }
+
+          // Gamepad analog axis override if nonzero
+          if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+            try {
+              var gamepads = navigator.getGamepads();
+              if (gamepads) {
+                for (var g = 0; g < gamepads.length; g++) {
+                  var gp = gamepads[g];
+                  if (!gp || !gp.connected || !gp.axes) continue;
+                  var rawAxis = name === "HORIZONTAL" ? gp.axes[0] : (name === "VERTICAL" ? gp.axes[1] : 0);
+                  if (typeof rawAxis === "number" && Math.abs(rawAxis) > deadzone) {
+                    val = rawAxis;
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+
+          // Clamping and deadzone
+          if (Math.abs(val) < deadzone) {
+            return 0;
+          }
+          return Math.max(-1, Math.min(1, val));
+        },
+
+        update: function () {
+          // Advance frame tick: clear single-frame pulses
+          for (var act in actionMap) {
+            var nowDown = evaluateActionState(act);
+            var prevDown = !!currentActionState[act];
+
+            justPressedActions[act] = nowDown && !prevDown;
+            justReleasedActions[act] = !nowDown && prevDown;
+            prevActionState[act] = prevDown;
+            currentActionState[act] = nowDown;
+          }
+
+          // Prune expired buffer entries
+          var now = getTime();
+          var cutoff = now - bufferDurationMs;
+          while (actionBuffer.length > 0 && actionBuffer[0].timestamp < cutoff) {
+            actionBuffer.shift();
+          }
+        },
+
+        tick: function () {
+          this.update();
+        },
+
+        flush: function () {
+          flush();
+        },
+
+        destroy: function () {
+          if (destroyed) return;
+          destroyed = true;
+          flush();
+          if (typeof window !== "undefined") {
+            if (targetElement && typeof targetElement.removeEventListener === "function") {
+              targetElement.removeEventListener("keydown", onKeyDown, false);
+              targetElement.removeEventListener("keyup", onKeyUp, false);
+            }
+            window.removeEventListener("blur", onBlur, false);
+            window.removeEventListener("message", onTeardownMessage, false);
+          }
+          if (typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+            document.removeEventListener("visibilitychange", onVisibilityChange, false);
+          }
+        }
+      };
+
+      return inputManager;
+    }
   };
 
   // Wire message handler for ARCADEVERSE_SET_VOLUME (#735) and ARCADEVERSE_DDA_CONFIG (#1112)
