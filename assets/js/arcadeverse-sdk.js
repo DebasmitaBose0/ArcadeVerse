@@ -3847,7 +3847,227 @@
           notify();
         }
       };
-    })()
+    })(),
+
+    /**
+     * Deterministic Hierarchical Finite State Machine (HFSM) & Game Transition Engine (#1625)
+     */
+    createStateMachine: function (config) {
+      config = config || {};
+      var states = config.states || {};
+      var transitions = config.transitions || [];
+      var initialState = config.initial || null;
+      var autoPause = config.autoPause !== false;
+
+      var currentState = null;
+      var activePath = [];
+      var stateStack = [];
+      var isHalted = false;
+
+      function parseStatePath(stateId) {
+        if (!stateId) return [];
+        var path = [];
+        var curr = stateId;
+        var visited = {};
+        while (curr && !visited[curr]) {
+          visited[curr] = true;
+          path.unshift(curr);
+          var def = states[curr];
+          if (def && def.parent) {
+            curr = def.parent;
+          } else if (curr.indexOf(".") !== -1) {
+            var parts = curr.split(".");
+            parts.pop();
+            curr = parts.join(".");
+          } else {
+            curr = null;
+          }
+        }
+        return path;
+      }
+
+      function findLCA(pathA, pathB) {
+        var minLen = Math.min(pathA.length, pathB.length);
+        var idx = 0;
+        while (idx < minLen && pathA[idx] === pathB[idx]) {
+          idx++;
+        }
+        return idx;
+      }
+
+      function executeTransition(targetState, payload) {
+        if (isHalted || !targetState) return false;
+        var targetDef = states[targetState];
+        if (!targetDef && targetState.indexOf(".") === -1) {
+          console.warn("[HFSM] State not defined: " + targetState);
+          return false;
+        }
+
+        var oldState = currentState;
+        var newPath = parseStatePath(targetState);
+        var oldPath = activePath.slice();
+
+        var lcaIndex = findLCA(oldPath, newPath);
+
+        // Exit states from active leaf up to LCA (exclusive)
+        for (var i = oldPath.length - 1; i >= lcaIndex; i--) {
+          var exitingStateId = oldPath[i];
+          var exitingDef = states[exitingStateId];
+          if (exitingDef && typeof exitingDef.onExit === "function") {
+            try {
+              exitingDef.onExit(targetState, payload);
+            } catch (err) {
+              console.error("[HFSM] Error in onExit for " + exitingStateId + ":", err);
+            }
+          }
+        }
+
+        currentState = targetState;
+        activePath = newPath;
+
+        // Enter states from LCA (exclusive) down to new leaf
+        for (var j = lcaIndex; j < newPath.length; j++) {
+          var enteringStateId = newPath[j];
+          var enteringDef = states[enteringStateId];
+          if (enteringDef && typeof enteringDef.onEnter === "function") {
+            try {
+              enteringDef.onEnter(oldState, payload);
+            } catch (err) {
+              console.error("[HFSM] Error in onEnter for " + enteringStateId + ":", err);
+            }
+          }
+        }
+
+        return true;
+      }
+
+      var messageHandler = null;
+
+      var fsm = {
+        get state() { return currentState; },
+        getCurrentState: function () { return currentState; },
+        getActivePath: function () { return activePath.slice(); },
+
+        isInState: function (stateName) {
+          if (!currentState || !stateName) return false;
+          if (currentState === stateName) return true;
+          for (var i = 0; i < activePath.length; i++) {
+            if (activePath[i] === stateName) return true;
+          }
+          return false;
+        },
+
+        transitionTo: function (targetState, payload) {
+          return executeTransition(targetState, payload);
+        },
+
+        trigger: function (eventName, payload) {
+          if (isHalted || !eventName) return false;
+          for (var i = 0; i < transitions.length; i++) {
+            var t = transitions[i];
+            if (t.event !== eventName) continue;
+
+            var matchFrom = false;
+            if (t.from === "*" || t.from === currentState || this.isInState(t.from)) {
+              matchFrom = true;
+            }
+
+            if (matchFrom) {
+              if (typeof t.guard === "function") {
+                try {
+                  if (!t.guard(payload)) continue;
+                } catch (err) {
+                  console.error("[HFSM] Error in guard for " + eventName + ":", err);
+                  continue;
+                }
+              }
+              return executeTransition(t.to, payload);
+            }
+          }
+          return false;
+        },
+
+        update: function (dt, totalTime) {
+          if (isHalted || !currentState) return;
+          for (var i = 0; i < activePath.length; i++) {
+            var sId = activePath[i];
+            var def = states[sId];
+            if (def && typeof def.onUpdate === "function") {
+              try {
+                def.onUpdate(dt, totalTime);
+              } catch (err) {
+                console.error("[HFSM] Error in onUpdate for " + sId + ":", err);
+              }
+            }
+          }
+        },
+
+        pushState: function (stateId, data) {
+          if (!currentState) return false;
+          stateStack.push({ state: currentState, data: data });
+          return executeTransition(stateId, data);
+        },
+
+        popState: function () {
+          if (stateStack.length === 0) return false;
+          var prev = stateStack.pop();
+          return executeTransition(prev.state, prev.data);
+        },
+
+        getStackDepth: function () {
+          return stateStack.length;
+        },
+
+        halt: function () {
+          isHalted = true;
+        },
+
+        resume: function () {
+          isHalted = false;
+        },
+
+        isPaused: function () {
+          return isHalted;
+        },
+
+        destroy: function () {
+          this.halt();
+          for (var i = activePath.length - 1; i >= 0; i--) {
+            var sId = activePath[i];
+            var def = states[sId];
+            if (def && typeof def.onExit === "function") {
+              try { def.onExit("DESTROYED", null); } catch (_) {}
+            }
+          }
+          currentState = null;
+          activePath = [];
+          stateStack = [];
+          if (typeof window !== "undefined" && messageHandler) {
+            window.removeEventListener("message", messageHandler);
+          }
+        }
+      };
+
+      if (typeof window !== "undefined" && autoPause) {
+        messageHandler = function (event) {
+          if (!event || !event.data) return;
+          if (event.data.type === "ARCADEVERSE_PAUSE") {
+            fsm.halt();
+          } else if (event.data.type === "ARCADEVERSE_RESUME") {
+            fsm.resume();
+          } else if (event.data.type === "ARCADEVERSE_TEARDOWN") {
+            fsm.destroy();
+          }
+        };
+        window.addEventListener("message", messageHandler, false);
+      }
+
+      if (initialState) {
+        executeTransition(initialState, config.initialData);
+      }
+
+      return fsm;
+    }
   };
 
   // Wire message handler for ARCADEVERSE_SET_VOLUME (#735) and ARCADEVERSE_DDA_CONFIG (#1112)
