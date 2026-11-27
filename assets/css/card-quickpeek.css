@@ -1,0 +1,49 @@
+/* ==========================================================================
+   ArcadeVerse Card Quick-Peek Micro-Canvas Styling (#1373)
+   Lightweight hover micro-canvas overlay styling for game cards.
+   ========================================================================== */
+
+@layer components;
+
+/* Ensure the micro-preview canvas sits atop the card preview without blocking clicks */
+.game-card-preview {
+  position: relative;
+  overflow: hidden;
+}
+
+.game-card-preview .card-micro-preview-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.15s ease;
+  background: transparent;
+}
+
+/* Reveal canvas on hover (desktop only) */
+@media (hover: hover) and (pointer: fine) {
+  .game-card.quickpeek-active .card-micro-preview-canvas {
+    opacity: 1;
+  }
+}
+
+/* Light theme adaptation */
+[data-theme="light"] .game-card-preview .card-micro-preview-canvas {
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.15));
+}
+
+/* Reduced motion: keep static preview only, disable canvas animation */
+html.a11y-reduced-motion .card-micro-preview-canvas {
+  display: none !important;
+}
+
+/* Mobile/touch: canvas disabled to preserve performance */
+@media (hover: none) and (pointer: coarse) {
+  .card-micro-preview-canvas {
+    display: none !important;
+  }
+}
