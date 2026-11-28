@@ -3847,6 +3847,330 @@
           notify();
         }
       };
+    })(),
+
+    /**
+     * 2D Spatial Hash Grid & Swept-AABB Continuous Collision Detection Engine (#1623)
+     */
+    Physics: (function () {
+      function toBox(b) {
+        if (!b) return { x: 0, y: 0, w: 0, h: 0 };
+        var bounds = b.bounds || b;
+        if (typeof bounds.minX === "number") {
+          return {
+            x: bounds.minX,
+            y: bounds.minY,
+            w: (bounds.maxX - bounds.minX) || 0,
+            h: (bounds.maxY - bounds.minY) || 0
+          };
+        }
+        return {
+          x: bounds.x || 0,
+          y: bounds.y || 0,
+          w: bounds.width !== undefined ? bounds.width : (bounds.w || 0),
+          h: bounds.height !== undefined ? bounds.height : (bounds.h || 0)
+        };
+      }
+
+      function hashCoords(cx, cy) {
+        return (((cx * 73856093) ^ (cy * 19349663)) & 0x7fffffff) >>> 0;
+      }
+
+      function sweptAABB(boxA, velA, boxB, velB, dt) {
+        var timeStep = typeof dt === "number" ? dt : 1.0;
+        var b1 = toBox(boxA);
+        var b2 = toBox(boxB);
+        var va = velA || { x: 0, y: 0 };
+        var vb = velB || { x: 0, y: 0 };
+
+        var vx = (va.x - vb.x) * timeStep;
+        var vy = (va.y - vb.y) * timeStep;
+
+        var alreadyOverlapping = !(
+          b1.x + b1.w <= b2.x ||
+          b1.x >= b2.x + b2.w ||
+          b1.y + b1.h <= b2.y ||
+          b1.y >= b2.y + b2.h
+        );
+
+        if (alreadyOverlapping) {
+          return { hit: true, toi: 0, normalX: 0, normalY: 0 };
+        }
+
+        var xInvEntry, yInvEntry;
+        var xInvExit, yInvExit;
+
+        if (vx > 0) {
+          xInvEntry = b2.x - (b1.x + b1.w);
+          xInvExit = (b2.x + b2.w) - b1.x;
+        } else {
+          xInvEntry = (b2.x + b2.w) - b1.x;
+          xInvExit = b2.x - (b1.x + b1.w);
+        }
+
+        if (vy > 0) {
+          yInvEntry = b2.y - (b1.y + b1.h);
+          yInvExit = (b2.y + b2.h) - b1.y;
+        } else {
+          yInvEntry = (b2.y + b2.h) - b1.y;
+          yInvExit = b2.y - (b1.y + b1.h);
+        }
+
+        var xEntry = vx === 0 ? -Infinity : xInvEntry / vx;
+        var xExit = vx === 0 ? Infinity : xInvExit / vx;
+        var yEntry = vy === 0 ? -Infinity : yInvEntry / vy;
+        var yExit = vy === 0 ? Infinity : yInvExit / vy;
+
+        var entryTime = Math.max(xEntry, yEntry);
+        var exitTime = Math.min(xExit, yExit);
+
+        if (entryTime > exitTime || (xEntry < 0 && yEntry < 0) || xEntry > 1.0 || yEntry > 1.0) {
+          return { hit: false, toi: 1.0, normalX: 0, normalY: 0 };
+        }
+
+        if (entryTime < 0 || entryTime > 1.0) {
+          return { hit: false, toi: 1.0, normalX: 0, normalY: 0 };
+        }
+
+        var normalX = 0;
+        var normalY = 0;
+        if (xEntry > yEntry) {
+          normalX = xInvEntry < 0 ? 1 : -1;
+          normalY = 0;
+        } else {
+          normalX = 0;
+          normalY = yInvEntry < 0 ? 1 : -1;
+        }
+
+        return {
+          hit: true,
+          toi: entryTime,
+          normalX: normalX,
+          normalY: normalY
+        };
+      }
+
+      function createSpatialGrid(options) {
+        var opts = options || {};
+        var cellSize = typeof opts.cellSize === "number" ? opts.cellSize : 64;
+        var buckets = new Map();
+        var entityCells = new Map();
+        var queryEpoch = 1;
+        var totalCount = 0;
+
+        function getCellKeys(box) {
+          var minCX = Math.floor(box.x / cellSize);
+          var maxCX = Math.floor((box.x + box.w) / cellSize);
+          var minCY = Math.floor(box.y / cellSize);
+          var maxCY = Math.floor((box.y + box.h) / cellSize);
+          var keys = [];
+          for (var cy = minCY; cy <= maxCY; cy++) {
+            for (var cx = minCX; cx <= maxCX; cx++) {
+              keys.push(hashCoords(cx, cy));
+            }
+          }
+          return keys;
+        }
+
+        var grid = {
+          cellSize: cellSize,
+          get count() { return totalCount; },
+          size: function () { return totalCount; },
+
+          insert: function (entity) {
+            if (!entity) return false;
+            if (entityCells.has(entity)) {
+              this.remove(entity);
+            }
+            var box = toBox(entity);
+            var keys = getCellKeys(box);
+            for (var i = 0; i < keys.length; i++) {
+              var k = keys[i];
+              var bucket = buckets.get(k);
+              if (!bucket) {
+                bucket = [];
+                buckets.set(k, bucket);
+              }
+              bucket.push(entity);
+            }
+            entityCells.set(entity, keys);
+            totalCount++;
+            return true;
+          },
+
+          update: function (entity) {
+            if (!entity) return false;
+            var oldKeys = entityCells.get(entity);
+            if (!oldKeys) return this.insert(entity);
+            var box = toBox(entity);
+            var newKeys = getCellKeys(box);
+            if (oldKeys.length === newKeys.length) {
+              var same = true;
+              for (var i = 0; i < newKeys.length; i++) {
+                if (oldKeys[i] !== newKeys[i]) {
+                  same = false;
+                  break;
+                }
+              }
+              if (same) return true;
+            }
+            this.remove(entity);
+            return this.insert(entity);
+          },
+
+          remove: function (entity) {
+            if (!entity) return false;
+            var keys = entityCells.get(entity);
+            if (!keys) return false;
+            for (var i = 0; i < keys.length; i++) {
+              var k = keys[i];
+              var bucket = buckets.get(k);
+              if (bucket) {
+                var idx = bucket.indexOf(entity);
+                if (idx !== -1) {
+                  bucket.splice(idx, 1);
+                }
+                if (bucket.length === 0) {
+                  buckets.delete(k);
+                }
+              }
+            }
+            entityCells.delete(entity);
+            totalCount = Math.max(0, totalCount - 1);
+            return true;
+          },
+
+          query: function (bounds, callback) {
+            var box = toBox(bounds);
+            var keys = getCellKeys(box);
+            var qId = ++queryEpoch;
+            var results = [];
+
+            for (var k = 0; k < keys.length; k++) {
+              var bucket = buckets.get(keys[k]);
+              if (bucket) {
+                for (var i = 0; i < bucket.length; i++) {
+                  var ent = bucket[i];
+                  if (ent.__avPhysQueryId !== qId) {
+                    ent.__avPhysQueryId = qId;
+                    var eb = toBox(ent);
+                    var overlaps = !(
+                      box.x + box.w < eb.x ||
+                      box.x > eb.x + eb.w ||
+                      box.y + box.h < eb.y ||
+                      box.y > eb.y + eb.h
+                    );
+                    if (overlaps) {
+                      results.push(ent);
+                      if (typeof callback === "function") {
+                        callback(ent);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return results;
+          },
+
+          clear: function () {
+            buckets.clear();
+            entityCells.clear();
+            totalCount = 0;
+          }
+        };
+
+        if (typeof window !== "undefined") {
+          window.addEventListener("message", function (event) {
+            if (!event || !event.data) return;
+            if (event.data.type === "ARCADEVERSE_TEARDOWN") {
+              grid.clear();
+            }
+          });
+        }
+
+        return grid;
+      }
+
+      function raycast(grid, start, end, filter) {
+        if (!grid || !start || !end) return [];
+        var cellSize = grid.cellSize || 64;
+        var x0 = start.x;
+        var y0 = start.y;
+        var x1 = end.x;
+        var y1 = end.y;
+
+        var dx = x1 - x0;
+        var dy = y1 - y0;
+        var dist = Math.hypot(dx, dy);
+        if (dist === 0) return [];
+
+        var dirX = dx / dist;
+        var dirY = dy / dist;
+
+        var bounds = {
+          x: Math.min(x0, x1),
+          y: Math.min(y0, y1),
+          w: Math.abs(dx),
+          h: Math.abs(dy)
+        };
+
+        var hits = [];
+        var candidates = grid.query(bounds);
+
+        for (var i = 0; i < candidates.length; i++) {
+          var ent = candidates[i];
+          if (typeof filter === "function" && !filter(ent)) continue;
+          var eb = toBox(ent);
+
+          // Ray-AABB intersection test
+          var tmin = 0;
+          var tmax = dist;
+          var valid = true;
+
+          if (Math.abs(dirX) < 1e-9) {
+            if (x0 < eb.x || x0 > eb.x + eb.w) valid = false;
+          } else {
+            var invDx = 1.0 / dirX;
+            var t1 = (eb.x - x0) * invDx;
+            var t2 = (eb.x + eb.w - x0) * invDx;
+            tmin = Math.max(tmin, Math.min(t1, t2));
+            tmax = Math.min(tmax, Math.max(t1, t2));
+            if (tmin > tmax) valid = false;
+          }
+
+          if (valid) {
+            if (Math.abs(dirY) < 1e-9) {
+              if (y0 < eb.y || y0 > eb.y + eb.h) valid = false;
+            } else {
+              var invDy = 1.0 / dirY;
+              var t1y = (eb.y - y0) * invDy;
+              var t2y = (eb.y + eb.h - y0) * invDy;
+              tmin = Math.max(tmin, Math.min(t1y, t2y));
+              tmax = Math.min(tmax, Math.max(t1y, t2y));
+              if (tmin > tmax) valid = false;
+            }
+          }
+
+          if (valid && tmin >= 0 && tmin <= dist) {
+            hits.push({
+              entity: ent,
+              distance: tmin,
+              hitX: x0 + dirX * tmin,
+              hitY: y0 + dirY * tmin
+            });
+          }
+        }
+
+        hits.sort(function (a, b) { return a.distance - b.distance; });
+        return hits;
+      }
+
+      return {
+        sweptAABB: sweptAABB,
+        createSpatialGrid: createSpatialGrid,
+        raycast: raycast
+      };
     })()
   };
 
