@@ -201,13 +201,46 @@
   }
 
   /**
+   * Applies the Amber Phosphor CRT Monochrome Terminal theme to DOM root.
+   * Sets data-theme="amber-terminal" so assets/css/theme-amber-terminal.css
+   * provides the warm amber phosphor halo, glow borders, and blinking block
+   * terminal cursors in search inputs.
+   * @param {boolean} persist
+   */
+  function applyAmberTerminal(persist = true) {
+    const rootEl = typeof document !== 'undefined' ? document.documentElement : null;
+
+    if (rootEl) {
+      toggleHorizonGrid(false);
+      rootEl.setAttribute('data-theme', 'amber-terminal');
+    }
+
+    if (persist && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_ACTIVE_THEME, 'amber-terminal');
+      } catch (_) {}
+    }
+
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('arcadeverse:amber-terminal-theme-changed', {
+        detail: { theme: 'amber-terminal' }
+      }));
+    }
+
+    return { id: 'amber-terminal', name: 'Amber Phosphor CRT Terminal' };
+  }
+
+  /**
    * Switches theme instantly by key/id.
-   * @param {string} themeKey ('synthwave-outrun' | 'synthwave_outrun' | 'solarized-dark' | 'solarized-light' | 'dark' | 'light')
+   * @param {string} themeKey ('synthwave-outrun' | 'synthwave_outrun' | 'solarized-dark' | 'solarized-light' | 'dark' | 'light' | 'amber-terminal')
    * @param {boolean} persist
    */
   function switchTheme(themeKey, persist = true) {
     if (themeKey === 'synthwave-outrun' || themeKey === 'synthwave_outrun') {
       return applySynthwaveOutrun(persist);
+    }
+    if (themeKey === 'amber-terminal') {
+      return applyAmberTerminal(persist);
     }
     if (themeKey === 'solarized-light' || themeKey === 'solarized_cyber_light') {
       return applySolarizedMode('light', persist);
@@ -310,6 +343,8 @@
 
       if (rootTheme === 'synthwave-outrun' || activeCustom === 'synthwave-outrun') {
         applySynthwaveOutrun(false);
+      } else if (rootTheme === 'amber-terminal' || activeCustom === 'amber-terminal') {
+        applyAmberTerminal(false);
       } else if (rootTheme && rootTheme.startsWith('solarized-')) {
         const savedMode = localStorage.getItem(STORAGE_KEY_MODE);
         applySolarizedMode(savedMode === 'light' ? 'light' : 'dark', false);
@@ -331,6 +366,7 @@
     applySolarizedMode,
     toggleSolarizedMode,
     applySynthwaveOutrun,
+    applyAmberTerminal,
     switchTheme,
     toggleHorizonGrid,
     getActiveMode,

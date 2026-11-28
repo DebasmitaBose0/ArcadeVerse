@@ -1,0 +1,222 @@
+/* ==========================================================================
+   ArcadeVerse Amber Phosphor CRT Monochrome Terminal Theme (#1371)
+   Warm amber monochrome aesthetic inspired by DEC VT220, IBM 3270, and
+   Apple II monochrome monitors. Reduces eye strain during night sessions.
+
+   Palette:
+   - Warm Amber Glow #ffb000   (accent / phosphor glow)
+   - Bright Highlight #ffd266  (highlight / secondary text)
+   - Muted Ochre   #996600     (muted / borders)
+   - Deep Dark     #120a00     (background)
+
+   Features:
+   - Warm phosphor halo & decay (text-shadow / border glows)
+   - Blinking amber solid block terminal cursors in search inputs
+   - Pure CSS, zero external assets, zero emojis
+   ========================================================================== */
+
+/* Amber Phosphor CRT Monochrome Terminal Theme */
+[data-theme="amber-terminal"] {
+  --bg-main: #120a00;
+  --bg-surface: #1a1100;
+  --bg-surface-elevated: #241800;
+  --bg-card: rgba(28, 19, 0, 0.88);
+  --bg-card-hover: rgba(38, 27, 0, 0.95);
+
+  --border-subtle: rgba(153, 102, 0, 0.25);
+  --border-medium: rgba(153, 102, 0, 0.45);
+  --border-focus: #ffb000;
+
+  --accent-primary: #ffb000;       /* Warm Amber Glow */
+  --accent-primary-hover: #ffd266; /* Bright Highlight */
+  --accent-secondary: #ffd266;
+  --accent-warm: #ffb000;
+  --accent-emerald: #996600;
+  --accent-rose: #cc6600;
+
+  --text-primary: #ffd266;         /* Bright Highlight on Deep Dark */
+  --text-secondary: #ffb000;       /* Warm Amber Glow */
+  --text-muted: #996600;           /* Muted Ochre */
+
+  --grid-line-color: rgba(153, 102, 0, 0.15);
+  --dot-pattern-color: rgba(255, 176, 0, 0.08);
+  --bg-gradient: radial-gradient(circle at 50% -10%, #241800 0%, #120a00 75%);
+  --cyber-grid-opacity: 0.6;
+  --orb-1-color: #ffb000;
+  --orb-2-color: #996600;
+  --orb-opacity: 0.14;
+  --table-row-hover: rgba(255, 176, 0, 0.06);
+  --preview-bg: #1a1100;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.70);
+  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.65);
+}
+
+/* Warm Phosphor Halo & Decay on interface text */
+[data-theme="amber-terminal"] body,
+[data-theme="amber-terminal"] h1,
+[data-theme="amber-terminal"] h2,
+[data-theme="amber-terminal"] h3,
+[data-theme="amber-terminal"] h4,
+[data-theme="amber-terminal"] p,
+[data-theme="amber-terminal"] span,
+[data-theme="amber-terminal"] .logo-text,
+[data-theme="amber-terminal"] .section-title,
+[data-theme="amber-terminal"] .section-subtitle,
+[data-theme="amber-terminal"] .game-card-title,
+[data-theme="amber-terminal"] .game-card-desc,
+[data-theme="amber-terminal"] .modal-game-info h3,
+[data-theme="amber-terminal"] #modal-game-title,
+[data-theme="amber-terminal"] .modal-game-author,
+[data-theme="amber-terminal"] .leaderboard-table th,
+[data-theme="amber-terminal"] .leaderboard-table td,
+[data-theme="amber-terminal"] .tier-table th,
+[data-theme="amber-terminal"] .tier-table td,
+[data-theme="amber-terminal"] .footer-desc,
+[data-theme="amber-terminal"] .footer-list li,
+[data-theme="amber-terminal"] .btn,
+[data-theme="amber-terminal"] a {
+  color: var(--text-primary) !important;
+  text-shadow: 0 0 6px rgba(255, 176, 0, 0.55),
+               0 0 12px rgba(255, 176, 0, 0.30),
+               0 0 2px rgba(255, 176, 0, 0.15) !important;
+}
+
+/* Muted text uses ochre phosphor */
+[data-theme="amber-terminal"] .text-muted,
+[data-theme="amber-terminal"] .text-secondary,
+[data-theme="amber-terminal"] .section-tag,
+[data-theme="amber-terminal"] .stat-label,
+[data-theme="amber-terminal"] .contributor-name,
+[data-theme="amber-terminal"] .game-category-tag,
+[data-theme="amber-terminal"] .modal-game-badge {
+  color: var(--text-secondary) !important;
+  text-shadow: 0 0 5px rgba(255, 176, 0, 0.45),
+               0 0 10px rgba(255, 176, 0, 0.22) !important;
+}
+
+/* Even more subtle muted lines */
+[data-theme="amber-terminal"] .text-muted,
+[data-theme="amber-terminal"] .stat-label,
+[data-theme="amber-terminal"] .section-subtitle {
+  color: var(--text-muted) !important;
+  text-shadow: 0 0 4px rgba(153, 102, 0, 0.5),
+               0 0 8px rgba(153, 102, 0, 0.25) !important;
+}
+
+/* Phosphor border glows on cards, modals, tables, buttons */
+[data-theme="amber-terminal"] .game-card,
+[data-theme="amber-terminal"] .modal-window,
+[data-theme="amber-terminal"] .modal-topbar,
+[data-theme="amber-terminal"] .leaderboard-table-card,
+[data-theme="amber-terminal"] .tier-box-header,
+[data-theme="amber-terminal"] .stat-card,
+[data-theme="amber-terminal"] .author-games-drawer-panel {
+  border: 1px solid var(--border-medium) !important;
+  box-shadow: 0 0 14px rgba(255, 176, 0, 0.25),
+              0 0 28px rgba(255, 176, 0, 0.12),
+              var(--shadow-card) !important;
+}
+
+[data-theme="amber-terminal"] .game-card:hover {
+  border-color: #ffb000 !important;
+  box-shadow: 0 0 20px rgba(255, 176, 0, 0.40),
+              0 0 40px rgba(255, 176, 0, 0.18),
+              var(--shadow-md) !important;
+}
+
+/* Buttons get amber phosphor glow */
+[data-theme="amber-terminal"] .btn,
+[data-theme="amber-terminal"] button,
+[data-theme="amber-terminal"] .pill,
+[data-theme="amber-terminal"] .tier-pill-btn,
+[data-theme="amber-terminal"] .az-btn {
+  border: 1px solid rgba(255, 176, 0, 0.45) !important;
+  box-shadow: 0 0 10px rgba(255, 176, 0, 0.25) !important;
+  text-shadow: 0 0 4px rgba(255, 176, 0, 0.5) !important;
+}
+
+[data-theme="amber-terminal"] .btn:hover,
+[data-theme="amber-terminal"] button:hover {
+  border-color: #ffd266 !important;
+  box-shadow: 0 0 16px rgba(255, 176, 0, 0.45),
+              0 0 32px rgba(255, 176, 0, 0.20) !important;
+}
+
+/* Leaderboard table phosphor styling */
+[data-theme="amber-terminal"] .leaderboard-table th {
+  border-bottom: 2px solid var(--border-medium) !important;
+  text-shadow: 0 0 6px rgba(255, 176, 0, 0.6) !important;
+}
+
+[data-theme="amber-terminal"] .leaderboard-table td {
+  border-bottom: 1px solid rgba(153, 102, 0, 0.2) !important;
+}
+
+[data-theme="amber-terminal"] .leaderboard-table tr:hover td {
+  background: rgba(255, 176, 0, 0.08) !important;
+}
+
+/* Navbar phosphor */
+[data-theme="amber-terminal"] .navbar {
+  border-bottom: 1px solid var(--border-medium) !important;
+  box-shadow: 0 0 18px rgba(255, 176, 0, 0.20) !important;
+}
+
+/* Blinking amber solid block terminal cursor in search inputs */
+[data-theme="amber-terminal"] #game-search-input,
+[data-theme="amber-terminal"] .search-box input,
+[data-theme="amber-terminal"] input[type="text"],
+[data-theme="amber-terminal"] input[type="search"] {
+  caret-color: #ffb000 !important;
+  caret-shape: block; /* solid block terminal cursor */
+  border: 1px solid rgba(255, 176, 0, 0.5) !important;
+  box-shadow: 0 0 10px rgba(255, 176, 0, 0.30) !important;
+  background: rgba(28, 19, 0, 0.7) !important;
+  color: #ffd266 !important;
+}
+
+[data-theme="amber-terminal"] #game-search-input:focus,
+[data-theme="amber-terminal"] .search-box input:focus,
+[data-theme="amber-terminal"] input[type="text"]:focus,
+[data-theme="amber-terminal"] input[type="search"]:focus {
+  border-color: #ffd266 !important;
+  box-shadow: 0 0 16px rgba(255, 176, 0, 0.55),
+              0 0 32px rgba(255, 176, 0, 0.25) !important;
+  outline: none !important;
+  animation: amber-cursor-blink 1s step-end infinite;
+}
+
+/* Blinking block cursor animation (amber phosphor pulse) */
+@keyframes amber-cursor-blink {
+  50% { opacity: 0.55; }
+}
+
+/* Ensure focused input text doesn't fully disappear during blink */
+
+/* Light theme is not applicable to amber terminal; force dark amber appearance */
+[data-theme="amber-terminal"][data-theme="light"] {
+  --bg-main: #120a00 !important;
+  --bg-surface: #1a1100 !important;
+  --text-primary: #ffd266 !important;
+  --text-secondary: #ffb000 !important;
+}
+
+/* Reduce motion: disable cursor blink for vestibular accessibility */
+html.a11y-reduced-motion[data-theme="amber-terminal"] #game-search-input:focus,
+html.a11y-reduced-motion[data-theme="amber-terminal"] .search-box input:focus,
+html.a11y-reduced-motion[data-theme="amber-terminal"] input[type="text"]:focus,
+html.a11y-reduced-motion[data-theme="amber-terminal"] input[type="search"]:focus {
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+/* Focus rings for keyboard navigation under amber theme */
+[data-theme="amber-terminal"] *:focus-visible {
+  outline: 3px solid #ffb000 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 12px rgba(255, 176, 0, 0.6) !important;
+  border-radius: 4px;
+}
